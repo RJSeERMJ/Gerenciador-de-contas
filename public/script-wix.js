@@ -349,6 +349,7 @@ function criarCardConta(conta) {
                     <div class="conta-info">
                         <h3>${conta.descricao}</h3>
                         <div class="conta-meta">
+                            <span><i class="fas fa-dollar-sign"></i> ${formatarMoeda(conta.valor || 0)}</span>
                             <span><i class="fas fa-tag"></i> ${conta.categoria || 'Sem categoria'}</span>
                             <span><i class="${statusIcon}"></i> ${statusText}</span>
                             ${conta.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
@@ -443,10 +444,12 @@ async function salvarConta(event) {
     event.preventDefault();
     
     const formData = new FormData(event.target);
+    const valor = parseFloat(formData.get('valor')) || 0;
+    
     const novaConta = {
         id: Date.now(),
         descricao: formData.get('descricao'),
-        valor: 0, // Valor padrão já que removemos o campo
+        valor: valor,
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
         tipo: formData.get('tipo'),
@@ -476,6 +479,7 @@ async function editarConta(id) {
     
     document.getElementById('editId').value = conta.id;
     document.getElementById('editDescricao').value = conta.descricao;
+    document.getElementById('editValor').value = conta.valor || 0;
     document.getElementById('editDataVencimento').value = conta.dataVencimento;
     document.getElementById('editTipo').value = conta.tipo || 'conta';
     document.getElementById('editCategoria').value = conta.categoria;
@@ -489,6 +493,7 @@ async function atualizarConta(event) {
     
     const formData = new FormData(event.target);
     const id = parseInt(formData.get('id'));
+    const valor = parseFloat(formData.get('valor')) || 0;
     
     const contaIndex = contas.findIndex(c => c.id === id);
     if (contaIndex === -1) return;
@@ -496,7 +501,7 @@ async function atualizarConta(event) {
     contas[contaIndex] = {
         ...contas[contaIndex],
         descricao: formData.get('descricao'),
-        valor: 0, // Valor padrão já que removemos o campo
+        valor: valor,
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
         tipo: formData.get('tipo'),
