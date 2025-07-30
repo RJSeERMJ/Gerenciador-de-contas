@@ -389,7 +389,7 @@ app.post('/api/configurar-email', async (req, res) => {
                     
                     <p style="color: #666; font-size: 14px; margin-top: 30px; text-align: center;">
                         Sistema Família Jamar - Gerenciador de Contas<br>
-                        <a href="http://localhost:3000" style="color: #4CAF50;">Acessar Sistema</a>
+                        <a href="https://gerenciador-de-contas-1.onrender.com" style="color: #4CAF50;">Acessar Sistema</a>
                     </p>
                 </div>
             </div>
