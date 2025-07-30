@@ -91,6 +91,7 @@ async function enviarEmail(destinatario, assunto, conteudo) {
 
 // Sistema de notificações automáticas
 let emailConfigurado = null;
+let ultimaNotificacao = {}; // Controlar para não enviar repetidas
 
 // Função para verificar contas vencendo
 async function verificarContasVencendo() {
@@ -117,8 +118,13 @@ async function verificarContasVencendo() {
         return dataVencimento < hoje;
     });
     
-    // Enviar alerta de contas vencendo
-    if (contasVencendo.length > 0) {
+    // Verificar se já enviamos notificação hoje
+    const hojeStr = hoje.toDateString();
+    const ultimaVencendo = ultimaNotificacao.vencendo || '';
+    const ultimaVencidas = ultimaNotificacao.vencidas || '';
+    
+    // Enviar alerta de contas vencendo (máximo 1x por dia)
+    if (contasVencendo.length > 0 && ultimaVencendo !== hojeStr) {
         const assunto = '⚠️ Contas Vencendo - Sistema Família Jamar';
         const conteudo = `
             <h2>⚠️ Contas Vencendo nos Próximos 3 Dias</h2>
@@ -136,11 +142,12 @@ async function verificarContasVencendo() {
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
+        ultimaNotificacao.vencendo = hojeStr;
         console.log('📧 Alerta de contas vencendo enviado');
     }
     
-    // Enviar alerta de contas vencidas
-    if (contasVencidas.length > 0) {
+    // Enviar alerta de contas vencidas (máximo 1x por dia)
+    if (contasVencidas.length > 0 && ultimaVencidas !== hojeStr) {
         const assunto = '🚨 Contas Vencidas - Sistema Família Jamar';
         const conteudo = `
             <h2>🚨 Contas Vencidas</h2>
@@ -158,15 +165,16 @@ async function verificarContasVencendo() {
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
+        ultimaNotificacao.vencidas = hojeStr;
         console.log('📧 Alerta de contas vencidas enviado');
     }
 }
 
-// Verificar contas a cada 6 horas (em produção)
+// Verificar contas a cada 6 horas (produção)
 setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000);
 
-// Verificar contas vencendo a cada 30 minutos (para teste)
-setInterval(verificarContasVencendo, 30 * 60 * 1000);
+// Verificar contas a cada 2 horas (para teste mais frequente)
+setInterval(verificarContasVencendo, 2 * 60 * 60 * 1000);
 
 // Rotas da API
 app.get('/api/contas', (req, res) => {

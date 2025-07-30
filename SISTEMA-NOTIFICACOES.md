@@ -44,14 +44,20 @@
 ## 📅 **FREQUÊNCIA DAS VERIFICAÇÕES:**
 
 ### **🔄 Verificação Automática:**
-- **Teste:** A cada 30 minutos
+- **Teste:** A cada 2 horas
 - **Produção:** A cada 6 horas
 - **Horário:** 24/7 (sistema sempre ativo)
 
 ### **📧 Envio de E-mails:**
-- **Apenas quando necessário** (contas vencendo/vencidas)
-- **Não há spam** - só alertas importantes
+- **Máximo 1x por dia** para cada tipo de alerta
+- **Não há spam** - controle inteligente de repetição
 - **E-mail configurado:** O que você definir na interface
+
+### **🎯 Controle Anti-Spam:**
+- **Contas vencendo:** Máximo 1 e-mail por dia
+- **Contas vencidas:** Máximo 1 e-mail por dia
+- **Verificação:** Continua a cada 2-6 horas
+- **Envio:** Só quando necessário e não repetido
 
 ## 🎯 **EXEMPLOS DE NOTIFICAÇÕES:**
 
