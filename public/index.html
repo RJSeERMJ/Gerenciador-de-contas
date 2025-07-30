@@ -297,5 +297,72 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Verificação de login
+        function checkAuth() {
+            const isLoggedIn = localStorage.getItem('familiaJamarLoggedIn');
+            if (isLoggedIn !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Verificar se o login não expirou (24 horas)
+            const loginTime = localStorage.getItem('familiaJamarLoginTime');
+            if (loginTime) {
+                const loginDate = new Date(loginTime);
+                const now = new Date();
+                const hoursDiff = (now - loginDate) / (1000 * 60 * 60);
+                
+                if (hoursDiff > 24) {
+                    // Login expirado
+                    localStorage.removeItem('familiaJamarLoggedIn');
+                    localStorage.removeItem('familiaJamarUser');
+                    localStorage.removeItem('familiaJamarLoginTime');
+                    window.location.href = 'login.html';
+                    return;
+                }
+            }
+            
+            // Mostrar informações do usuário
+            const user = localStorage.getItem('familiaJamarUser');
+            if (user) {
+                const userInfo = document.createElement('div');
+                userInfo.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(255, 255, 255, 0.9);
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    color: #2d3748;
+                    z-index: 1000;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                `;
+                userInfo.innerHTML = `
+                    <i class="fas fa-user"></i> ${user}
+                    <button onclick="logout()" style="margin-left: 10px; background: none; border: none; color: #e53e3e; cursor: pointer;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                `;
+                document.body.appendChild(userInfo);
+            }
+        }
+        
+        // Função de logout
+        function logout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                localStorage.removeItem('familiaJamarLoggedIn');
+                localStorage.removeItem('familiaJamarUser');
+                localStorage.removeItem('familiaJamarLoginTime');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Verificar autenticação ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
+    </script>
 </body>
 </html> 
