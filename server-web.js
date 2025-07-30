@@ -35,19 +35,31 @@ const emailConfigs = {
 // Função para enviar e-mail
 async function enviarEmail(destinatario, assunto, conteudo) {
     try {
+        console.log('📧 Tentando enviar e-mail para:', destinatario);
+        console.log('🔧 Configuração de e-mail:', {
+            host: emailConfigs.gmail.host,
+            port: emailConfigs.gmail.port,
+            user: emailConfigs.gmail.auth.user,
+            pass: process.env.EMAIL_PASSWORD ? '***CONFIGURADA***' : '***NÃO CONFIGURADA***'
+        });
+        
         // Verificar se a senha está configurada
         if (!process.env.EMAIL_PASSWORD || process.env.EMAIL_PASSWORD === 'sua_senha_aqui') {
-            console.log('❌ Senha de e-mail não configurada');
+            console.log('❌ Senha de e-mail não configurada no Vercel');
+            console.log('💡 Configure a variável EMAIL_PASSWORD no Vercel Dashboard');
             return false;
         }
         
         const transporter = nodemailer.createTransporter(emailConfigs.gmail);
         
+        console.log('🔍 Verificando conexão com Gmail...');
         // Verificar conexão
         await transporter.verify();
+        console.log('✅ Conexão com Gmail verificada com sucesso');
         
         // Enviar e-mail
-        await transporter.sendMail({
+        console.log('📤 Enviando e-mail...');
+        const result = await transporter.sendMail({
             from: 'jamarestudo@gmail.com',
             to: destinatario,
             subject: assunto,
@@ -55,15 +67,22 @@ async function enviarEmail(destinatario, assunto, conteudo) {
         });
         
         console.log('✅ E-mail enviado com sucesso para:', destinatario);
+        console.log('📧 Message ID:', result.messageId);
         return true;
     } catch (error) {
         console.log('❌ Erro ao enviar e-mail:', error.message);
+        console.log('🔍 Código do erro:', error.code);
         
         // Logs específicos para debug
         if (error.code === 'EAUTH') {
             console.log('❌ Erro de autenticação - verifique a senha do Gmail');
+            console.log('💡 Certifique-se de usar uma senha de aplicativo, não a senha normal');
         } else if (error.code === 'ECONNECTION') {
             console.log('❌ Erro de conexão com o servidor SMTP');
+        } else if (error.code === 'ETIMEDOUT') {
+            console.log('❌ Timeout na conexão com Gmail');
+        } else if (error.code === 'EAUTHENTICATION') {
+            console.log('❌ Falha na autenticação - verifique as credenciais');
         }
         
         return false;
