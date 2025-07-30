@@ -89,6 +89,85 @@ async function enviarEmail(destinatario, assunto, conteudo) {
     }
 }
 
+// Sistema de notificações automáticas
+let emailConfigurado = null;
+
+// Função para verificar contas vencendo
+async function verificarContasVencendo() {
+    if (!emailConfigurado) {
+        console.log('📧 E-mail não configurado - pulando verificação');
+        return;
+    }
+    
+    const hoje = new Date();
+    const proximos3Dias = new Date();
+    proximos3Dias.setDate(hoje.getDate() + 3);
+    
+    const contasVencendo = contas.filter(conta => {
+        if (conta.paga) return false;
+        
+        const dataVencimento = new Date(conta.dataVencimento);
+        return dataVencimento >= hoje && dataVencimento <= proximos3Dias;
+    });
+    
+    const contasVencidas = contas.filter(conta => {
+        if (conta.paga) return false;
+        
+        const dataVencimento = new Date(conta.dataVencimento);
+        return dataVencimento < hoje;
+    });
+    
+    // Enviar alerta de contas vencendo
+    if (contasVencendo.length > 0) {
+        const assunto = '⚠️ Contas Vencendo - Sistema Família Jamar';
+        const conteudo = `
+            <h2>⚠️ Contas Vencendo nos Próximos 3 Dias</h2>
+            <p>Olá! Você tem contas vencendo em breve:</p>
+            <br>
+            <ul>
+                ${contasVencendo.map(conta => `
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
+                `).join('')}
+            </ul>
+            <br>
+            <p>💰 Total: R$ ${contasVencendo.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        await enviarEmail(emailConfigurado, assunto, conteudo);
+        console.log('📧 Alerta de contas vencendo enviado');
+    }
+    
+    // Enviar alerta de contas vencidas
+    if (contasVencidas.length > 0) {
+        const assunto = '🚨 Contas Vencidas - Sistema Família Jamar';
+        const conteudo = `
+            <h2>🚨 Contas Vencidas</h2>
+            <p>Olá! Você tem contas em atraso:</p>
+            <br>
+            <ul>
+                ${contasVencidas.map(conta => `
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
+                `).join('')}
+            </ul>
+            <br>
+            <p>💰 Total: R$ ${contasVencidas.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        await enviarEmail(emailConfigurado, assunto, conteudo);
+        console.log('📧 Alerta de contas vencidas enviado');
+    }
+}
+
+// Verificar contas a cada 6 horas (em produção)
+setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000);
+
+// Verificar contas vencendo a cada 30 minutos (para teste)
+setInterval(verificarContasVencendo, 30 * 60 * 1000);
+
 // Rotas da API
 app.get('/api/contas', (req, res) => {
     res.json(contas);
@@ -208,6 +287,7 @@ app.post('/api/configurar-email', async (req, res) => {
         
         if (sucesso) {
             console.log('✅ E-mail de confirmação enviado com sucesso');
+            emailConfigurado = email; // Atualiza a configuração do e-mail
             res.json({ 
                 success: true, 
                 message: 'E-mail configurado com sucesso! Verifique sua caixa de entrada.' 
@@ -255,6 +335,49 @@ app.get('/api/estatisticas', (req, res) => {
         totalPendente: totalPendente.toFixed(2),
         totalVencido: totalVencido.toFixed(2)
     });
+});
+
+// Rota para testar notificações
+app.post('/api/testar-notificacoes', async (req, res) => {
+    console.log('🧪 Testando notificações...');
+    
+    if (!emailConfigurado) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'E-mail não configurado. Configure um e-mail primeiro.' 
+        });
+    }
+    
+    try {
+        // Criar uma conta de teste
+        const contaTeste = {
+            id: nextId++,
+            descricao: 'Conta de Teste - Luz',
+            valor: '150.00',
+            dataVencimento: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
+            categoria: 'Energia',
+            recorrente: false,
+            paga: false,
+            dataCriacao: new Date().toISOString()
+        };
+        
+        contas.push(contaTeste);
+        
+        // Executar verificação manual
+        await verificarContasVencendo();
+        
+        res.json({ 
+            success: true, 
+            message: 'Notificação de teste enviada! Verifique sua caixa de entrada.',
+            contaTeste: contaTeste
+        });
+    } catch (error) {
+        console.log('❌ Erro ao testar notificações:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro ao testar notificações: ' + error.message 
+        });
+    }
 });
 
 // Rota principal - usar o index.html da Família Jamar
