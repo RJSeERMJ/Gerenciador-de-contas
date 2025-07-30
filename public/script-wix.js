@@ -316,55 +316,64 @@ function renderizarContas() {
 }
 
 function criarCardConta(conta) {
-    const hoje = new Date();
-    const dataVencimento = new Date(conta.dataVencimento);
-    const diasAteVencimento = Math.ceil((dataVencimento - hoje) / (1000 * 60 * 60 * 24));
-    
-    let statusClass = 'pendente';
-    let statusIcon = 'fas fa-clock';
-    let statusText = `Vence em ${diasAteVencimento} dias`;
-    
-    if (conta.paga) {
-        statusClass = 'paga';
-        statusIcon = 'fas fa-check-circle';
-        statusText = 'Paga';
-    } else if (dataVencimento < hoje) {
-        statusClass = 'vencida';
-        statusIcon = 'fas fa-exclamation-triangle';
-        statusText = `Vencida há ${Math.abs(diasAteVencimento)} dias`;
-    } else if (diasAteVencimento <= 3) {
-        statusClass = 'vencida';
-        statusIcon = 'fas fa-exclamation-triangle';
-        statusText = `Vence em ${diasAteVencimento} dias`;
-    }
-    
-    return `
-        <div class="conta-item ${statusClass}">
-            <div class="conta-header">
-                <div class="conta-info">
-                    <h3>${conta.descricao}</h3>
-                    <div class="conta-meta">
-                        <span><i class="fas fa-tag"></i> ${conta.categoria}</span>
-                        <span><i class="${statusIcon}"></i> ${statusText}</span>
-                        ${conta.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
+    try {
+        if (!conta || !conta.id || !conta.descricao) {
+            return '<div class="conta-item error">Conta inválida</div>';
+        }
+        
+        const hoje = new Date();
+        const dataVencimento = new Date(conta.dataVencimento);
+        const diasAteVencimento = Math.ceil((dataVencimento - hoje) / (1000 * 60 * 60 * 24));
+        
+        let statusClass = 'pendente';
+        let statusIcon = 'fas fa-clock';
+        let statusText = `Vence em ${diasAteVencimento} dias`;
+        
+        if (conta.paga === true) {
+            statusClass = 'paga';
+            statusIcon = 'fas fa-check-circle';
+            statusText = 'Paga';
+        } else if (dataVencimento < hoje) {
+            statusClass = 'vencida';
+            statusIcon = 'fas fa-exclamation-triangle';
+            statusText = `Vencida há ${Math.abs(diasAteVencimento)} dias`;
+        } else if (diasAteVencimento <= 3) {
+            statusClass = 'vencida';
+            statusIcon = 'fas fa-exclamation-triangle';
+            statusText = `Vence em ${diasAteVencimento} dias`;
+        }
+        
+        return `
+            <div class="conta-item ${statusClass}">
+                <div class="conta-header">
+                    <div class="conta-info">
+                        <h3>${conta.descricao}</h3>
+                        <div class="conta-meta">
+                            <span><i class="fas fa-tag"></i> ${conta.categoria || 'Sem categoria'}</span>
+                            <span><i class="${statusIcon}"></i> ${statusText}</span>
+                            ${conta.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="conta-actions">
-                ${!conta.paga ? `
-                    <button class="btn btn-success" onclick="marcarComoPaga(${conta.id})">
-                        <i class="fas fa-check"></i> Pagar
+                <div class="conta-actions">
+                    ${conta.paga !== true ? `
+                        <button class="btn btn-success" onclick="marcarComoPaga(${conta.id})">
+                            <i class="fas fa-check"></i> Pagar
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-primary" onclick="editarConta(${conta.id})">
+                        <i class="fas fa-edit"></i> Editar
                     </button>
-                ` : ''}
-                <button class="btn btn-primary" onclick="editarConta(${conta.id})">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button class="btn btn-danger" onclick="deletarConta(${conta.id})">
-                    <i class="fas fa-trash"></i> Deletar
-                </button>
+                    <button class="btn btn-danger" onclick="deletarConta(${conta.id})">
+                        <i class="fas fa-trash"></i> Deletar
+                    </button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+        
+    } catch (error) {
+        return '<div class="conta-item error">Erro ao carregar conta</div>';
+    }
 }
 
 // Funções para atualizar categorias baseado no tipo
@@ -517,66 +526,41 @@ async function deletarConta(id) {
 
 async function marcarComoPaga(id) {
     try {
-        console.log('🔍 Tentando marcar conta como paga:', id);
-        
-        // Verificar se o ID é válido
-        if (!id || isNaN(id)) {
-            console.error('❌ ID inválido:', id);
-            mostrarMensagem('Erro: ID da conta inválido', 'error');
+        // Verificações básicas
+        if (!id || !Array.isArray(contas)) {
+            mostrarMensagem('Erro: Dados inválidos', 'error');
             return;
         }
         
-        // Verificar se a conta existe
-        const contaIndex = contas.findIndex(c => c.id === id);
+        // Encontrar a conta
+        const contaIndex = contas.findIndex(c => c && c.id === id);
         if (contaIndex === -1) {
-            console.error('❌ Conta não encontrada:', id);
-            mostrarMensagem('Erro: Conta não encontrada', 'error');
+            mostrarMensagem('Conta não encontrada', 'error');
             return;
         }
         
-        // Verificar se a conta já está paga
-        if (contas[contaIndex].paga) {
-            console.log('ℹ️ Conta já está marcada como paga:', id);
+        // Verificar se já está paga
+        if (contas[contaIndex].paga === true) {
             mostrarMensagem('Esta conta já está marcada como paga!', 'info');
             return;
         }
         
         // Marcar como paga
-        contas[contaIndex].paga = true;
-        contas[contaIndex].dataPagamento = new Date().toISOString();
+        contas[contaIndex] = {
+            ...contas[contaIndex],
+            paga: true,
+            dataPagamento: new Date().toISOString()
+        };
         
-        console.log('✅ Conta marcada como paga:', contas[contaIndex]);
-        
-        // Salvar dados
-        try {
-            salvarDados();
-            console.log('💾 Dados salvos com sucesso');
-        } catch (error) {
-            console.error('❌ Erro ao salvar dados:', error);
-            mostrarMensagem('Erro ao salvar dados', 'error');
-            return;
-        }
-        
-        // Atualizar interface
-        try {
-            atualizarDashboard();
-            console.log('📊 Dashboard atualizado');
-        } catch (error) {
-            console.error('❌ Erro ao atualizar dashboard:', error);
-        }
-        
-        try {
-            renderizarContas();
-            console.log('📋 Lista de contas atualizada');
-        } catch (error) {
-            console.error('❌ Erro ao renderizar contas:', error);
-        }
+        // Salvar e atualizar
+        salvarDados();
+        atualizarDashboard();
+        renderizarContas();
         
         mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
         
     } catch (error) {
-        console.error('❌ Erro inesperado ao marcar conta como paga:', error);
-        mostrarMensagem('Erro inesperado ao processar pagamento', 'error');
+        mostrarMensagem('Erro ao processar pagamento', 'error');
     }
 }
 
