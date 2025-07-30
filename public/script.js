@@ -235,7 +235,7 @@ async function salvarConta(event) {
     const formData = new FormData(event.target);
     const conta = {
         descricao: formData.get('descricao'),
-        valor: parseFloat(formData.get('valor')),
+        valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
         recorrente: formData.has('recorrente')
@@ -270,7 +270,6 @@ async function editarConta(id) {
     // Preencher formulário
     document.getElementById('editId').value = conta.id;
     document.getElementById('editDescricao').value = conta.descricao;
-    document.getElementById('editValor').value = conta.valor;
     document.getElementById('editDataVencimento').value = conta.dataVencimento;
     document.getElementById('editCategoria').value = conta.categoria;
     document.getElementById('editRecorrente').checked = conta.recorrente;
@@ -285,7 +284,7 @@ async function atualizarConta(event) {
     const id = formData.get('id');
     const conta = {
         descricao: formData.get('descricao'),
-        valor: parseFloat(formData.get('valor')),
+        valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
         recorrente: formData.has('recorrente'),
