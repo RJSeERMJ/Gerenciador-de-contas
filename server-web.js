@@ -486,6 +486,59 @@ app.post('/api/testar-notificacoes', async (req, res) => {
     }
 });
 
+
+// Rota para testar e-mail (simples)
+app.post('/api/testar-email', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'E-mail é obrigatório' 
+        });
+    }
+    
+    try {
+        // Verificar se a senha está configurada
+        if (!process.env.EMAIL_PASSWORD || process.env.EMAIL_PASSWORD === 'sua_senha_aqui') {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Senha de e-mail não configurada no servidor. Configure a variável EMAIL_PASSWORD no Vercel.' 
+            });
+        }
+        
+        const assunto = '✅ E-mail Configurado - Sistema Família Jamar';
+        const conteudo = `
+            <h2>✅ E-mail configurado com sucesso!</h2>
+            <p>Olá! Seu e-mail foi configurado no Sistema Família Jamar.</p>
+            <p>A partir de agora você receberá notificações sobre suas contas neste e-mail.</p>
+            <br>
+            <p><strong>E-mail configurado:</strong> ${email}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        const sucesso = await enviarEmail(email, assunto, conteudo);
+        
+        if (sucesso) {
+            res.json({ 
+                success: true, 
+                message: 'E-mail de teste enviado com sucesso! Verifique sua caixa de entrada.' 
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Erro ao enviar e-mail de teste. Verifique a configuração do servidor.' 
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor: ' + error.message 
+        });
+    }
+});
+
 // Rota principal - redirecionar para o sistema com login
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

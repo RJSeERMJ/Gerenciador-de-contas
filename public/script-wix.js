@@ -600,15 +600,30 @@ async function salvarConfiguracaoEmail(event) {
         return;
     }
     
-    emailConfigurado = { email };
-    salvarDados();
-    
-    fecharModalConfigurarEmail();
-    
-    // Simular envio de e-mail de confirmação
-    simularEmailConfirmacao(email);
-    
-    mostrarMensagem('E-mail configurado com sucesso! Verifique sua caixa de entrada para confirmar.', 'success');
+    try {
+        // Enviar para o servidor
+        const response = await fetch('/api/configurar-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            emailConfigurado = { email };
+            salvarDados();
+            fecharModalConfigurarEmail();
+            mostrarMensagem(data.message, 'success');
+        } else {
+            mostrarMensagem(data.error || 'Erro ao configurar e-mail', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao configurar e-mail:', error);
+        mostrarMensagem('Erro de conexão com o servidor', 'error');
+    }
 }
 
 // Funções de exportação/importação
@@ -670,13 +685,27 @@ function processarImportacao(event) {
     event.target.value = '';
 }
 
-// Funções de notificação simulada
-function simularEmailConfirmacao(email) {
-    console.log('📧 Simulando envio de e-mail de confirmação...');
-    console.log(`📧 Para: ${email}`);
-    console.log(`📧 Assunto: ✅ Cadastro Confirmado - Família Jamar`);
-    console.log('📧 Conteúdo: Você está cadastrado e receberá alertas de quando precisará pagar as contas!');
-    console.log('📧 Nota: Em uma versão com servidor, este e-mail seria enviado automaticamente.');
+// Funções de notificação (agora usando servidor real)
+async function enviarEmailConfirmacao(email) {
+    try {
+        const response = await fetch('/api/testar-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ E-mail de confirmação enviado com sucesso');
+        } else {
+            console.error('❌ Erro ao enviar e-mail:', data.error);
+        }
+    } catch (error) {
+        console.error('❌ Erro de conexão:', error);
+    }
 }
 
 function simularNotificacaoEmail(conta) {
