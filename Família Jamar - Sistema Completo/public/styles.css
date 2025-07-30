@@ -947,4 +947,164 @@ body {
     padding: 2px 6px;
     font-size: 10px;
     font-family: monospace;
+}
+
+/* Estilos para receitas na primeira tela */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.section-header h3 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-header h3 i {
+    color: #667eea;
+}
+
+.receitas-preview {
+    margin-bottom: 30px;
+}
+
+.receita-preview-item {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.receita-preview-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+}
+
+.receita-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.receita-preview-info h4 {
+    margin: 0 0 5px 0;
+    color: #2d3748;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.receita-preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: #718096;
+}
+
+.receita-preview-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.receita-preview-valor {
+    font-size: 18px;
+    font-weight: 700;
+    color: #38a169;
+    text-align: right;
+}
+
+.receita-preview-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.receita-preview-actions .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.ver-mais-receitas {
+    text-align: center;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f7fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.ver-mais-receitas:hover {
+    border-color: #667eea;
+    background: #edf2f7;
+}
+
+.ver-mais-receitas .btn {
+    background: transparent;
+    color: #667eea;
+    border: 1px solid #667eea;
+}
+
+.ver-mais-receitas .btn:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Melhorias para botões de receita */
+.receita-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+
+.receita-actions .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* Responsividade para receitas */
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .receita-preview-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .receita-preview-valor {
+        text-align: left;
+    }
+    
+    .receita-preview-actions {
+        justify-content: flex-start;
+    }
+    
+    .receita-actions {
+        justify-content: flex-start;
+    }
 } 

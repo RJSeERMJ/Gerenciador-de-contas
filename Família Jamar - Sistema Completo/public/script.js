@@ -1,10 +1,12 @@
 // Variáveis globais
 let contas = [];
 let contasFiltradas = [];
+let receitas = [];
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     carregarContas();
+    carregarReceitas();
     definirDataMinima();
     detectarAplicacaoDesktop();
     configurarAtalhosTeclado();
@@ -47,17 +49,75 @@ function atualizarDashboard() {
 function renderizarContas() {
     const container = document.getElementById('listaContas');
     
+    let html = '';
+    
+    // Seção de Receitas
+    if (receitas.length > 0) {
+        html += `
+            <div class="section-header">
+                <h3><i class="fas fa-plus-circle"></i> Receitas</h3>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalReceita()">
+                    <i class="fas fa-plus"></i> Nova Receita
+                </button>
+            </div>
+            <div class="receitas-preview">
+                ${receitas.slice(0, 3).map(receita => criarCardReceitaPreview(receita)).join('')}
+                ${receitas.length > 3 ? `
+                    <div class="ver-mais-receitas">
+                        <button class="btn btn-outline" onclick="mostrarAba('dashboard')">
+                            Ver todas as ${receitas.length} receitas
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Seção de Contas
+    html += `
+        <div class="section-header">
+            <h3><i class="fas fa-list"></i> Contas</h3>
+        </div>
+    `;
+    
     if (contasFiltradas.length === 0) {
-        container.innerHTML = `
+        html += `
             <div class="message info">
                 <i class="fas fa-info-circle"></i>
                 Nenhuma conta encontrada. Adicione sua primeira conta!
             </div>
         `;
-        return;
+    } else {
+        html += contasFiltradas.map(conta => criarCardConta(conta)).join('');
     }
 
-    container.innerHTML = contasFiltradas.map(conta => criarCardConta(conta)).join('');
+    container.innerHTML = html;
+}
+
+function criarCardReceitaPreview(receita) {
+    return `
+        <div class="receita-preview-item">
+            <div class="receita-preview-header">
+                <div class="receita-preview-info">
+                    <h4>${receita.descricao}</h4>
+                    <div class="receita-preview-meta">
+                        <span><i class="fas fa-calendar"></i> ${formatarData(receita.data)}</span>
+                        <span><i class="fas fa-tag"></i> ${receita.categoria}</span>
+                        ${receita.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
+                    </div>
+                </div>
+                <div class="receita-preview-valor">${formatarMoeda(receita.valor)}</div>
+            </div>
+            <div class="receita-preview-actions">
+                <button class="btn btn-outline btn-sm" onclick="editarReceita(${receita.id})">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deletarReceita(${receita.id})">
+                    <i class="fas fa-trash"></i> Deletar
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 function criarCardConta(conta) {
@@ -502,9 +562,6 @@ window.onclick = function(event) {
 
 // ================= DASHBOARD E RECEITAS =================
 
-// Variável global para receitas
-let receitas = [];
-
 // Carregar receitas do localStorage
 function carregarReceitas() {
     const receitasSalvas = localStorage.getItem('receitas');
@@ -546,6 +603,7 @@ function salvarReceita(event) {
     salvarReceitasLocal();
     fecharModalNovaReceita();
     renderizarReceitas();
+    renderizarContas(); // Atualizar também a primeira tela
     atualizarResumoFinanceiro();
     atualizarGraficos();
     mostrarMensagem('Receita adicionada com sucesso!', 'success');
@@ -576,8 +634,89 @@ function criarCardReceita(receita) {
                 </div>
                 <div class="receita-valor">${formatarMoeda(receita.valor)}</div>
             </div>
+            <div class="receita-actions">
+                <button class="btn btn-outline btn-sm" onclick="editarReceita(${receita.id})">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deletarReceita(${receita.id})">
+                    <i class="fas fa-trash"></i> Deletar
+                </button>
+            </div>
         </div>
     `;
+}
+
+function editarReceita(id) {
+    const receita = receitas.find(r => r.id === id);
+    if (!receita) return;
+
+    document.getElementById('editReceitaId').value = receita.id;
+    document.getElementById('editReceitaDescricao').value = receita.descricao;
+    document.getElementById('editReceitaValor').value = receita.valor;
+    document.getElementById('editReceitaData').value = receita.data;
+    document.getElementById('editReceitaCategoria').value = receita.categoria;
+    document.getElementById('editReceitaRecorrente').checked = receita.recorrente;
+
+    abrirModalEditarReceita();
+}
+
+function atualizarReceita(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const id = parseInt(formData.get('id'));
+    
+    const receitaIndex = receitas.findIndex(r => r.id === id);
+    if (receitaIndex === -1) {
+        mostrarMensagem('Receita não encontrada!', 'error');
+        return;
+    }
+
+    const receita = {
+        id: id,
+        descricao: formData.get('descricao'),
+        valor: parseFloat(formData.get('valor')),
+        data: formData.get('data'),
+        categoria: formData.get('categoria'),
+        recorrente: formData.has('recorrente')
+    };
+
+    receitas[receitaIndex] = receita;
+    salvarReceitasLocal();
+    fecharModalEditarReceita();
+    renderizarReceitas();
+    renderizarContas(); // Atualizar também a primeira tela
+    atualizarResumoFinanceiro();
+    atualizarGraficos();
+    mostrarMensagem('Receita atualizada com sucesso!', 'success');
+}
+
+function deletarReceita(id) {
+    if (!confirm('Tem certeza que deseja deletar esta receita?')) {
+        return;
+    }
+
+    const receitaIndex = receitas.findIndex(r => r.id === id);
+    if (receitaIndex === -1) {
+        mostrarMensagem('Receita não encontrada!', 'error');
+        return;
+    }
+
+    receitas.splice(receitaIndex, 1);
+    salvarReceitasLocal();
+    renderizarReceitas();
+    renderizarContas(); // Atualizar também a primeira tela
+    atualizarResumoFinanceiro();
+    atualizarGraficos();
+    mostrarMensagem('Receita deletada com sucesso!', 'success');
+}
+
+function abrirModalEditarReceita() {
+    document.getElementById('modalEditarReceita').style.display = 'block';
+}
+
+function fecharModalEditarReceita() {
+    document.getElementById('modalEditarReceita').style.display = 'none';
 }
 
 // Alternar abas
