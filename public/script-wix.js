@@ -46,15 +46,104 @@ function definirDataMinima() {
     document.getElementById('editDataVencimento').min = hoje;
 }
 
+// Funções de Navegação por Abas
+function mostrarAba(aba) {
+    // Esconder todas as abas
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remover classe active de todos os botões
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar aba selecionada
+    document.getElementById(`aba-${aba}`).classList.add('active');
+    
+    // Adicionar classe active ao botão clicado
+    event.target.classList.add('active');
+    
+    // Se for a aba dashboard, atualizar os gráficos
+    if (aba === 'dashboard') {
+        atualizarDashboard();
+        atualizarGraficos();
+    }
+}
+
 function atualizarDashboard() {
     const hoje = new Date();
     const contasPendentes = contas.filter(conta => !conta.paga);
     const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
     const contasPagas = contas.filter(conta => conta.paga);
+    const totalPendente = contasPendentes.reduce((total, conta) => total + parseFloat(conta.valor), 0);
     
     document.getElementById('contasPendentes').textContent = contasPendentes.length;
     document.getElementById('contasVencidas').textContent = contasVencidas.length;
     document.getElementById('contasPagas').textContent = contasPagas.length;
+    document.getElementById('totalPendente').textContent = formatarMoeda(totalPendente);
+}
+
+// Função para atualizar gráficos
+function atualizarGraficos() {
+    // Aqui você pode adicionar lógica para criar gráficos reais
+    // Por enquanto, vamos apenas mostrar informações básicas
+    
+    const graficoCategoria = document.getElementById('graficoCategoria');
+    const graficoEvolucao = document.getElementById('graficoEvolucao');
+    
+    // Estatísticas por categoria
+    const categorias = {};
+    contas.forEach(conta => {
+        if (!categorias[conta.categoria]) {
+            categorias[conta.categoria] = { count: 0, total: 0 };
+        }
+        categorias[conta.categoria].count++;
+        categorias[conta.categoria].total += parseFloat(conta.valor);
+    });
+    
+    const categoriaHTML = Object.entries(categorias)
+        .map(([categoria, dados]) => `
+            <div style="margin: 10px 0; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                <strong>${categoria}</strong><br>
+                Contas: ${dados.count} | Total: ${formatarMoeda(dados.total)}
+            </div>
+        `).join('');
+    
+    graficoCategoria.innerHTML = `
+        <div style="text-align: left;">
+            <h4 style="margin-bottom: 15px; color: #2d3748;">Distribuição por Categoria</h4>
+            ${categoriaHTML || '<p style="color: #718096;">Nenhuma conta cadastrada</p>'}
+        </div>
+    `;
+    
+    // Estatísticas de evolução (últimos 6 meses)
+    const hoje = new Date();
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+        const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        meses.push({
+            mes: mes.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            contas: contas.filter(conta => {
+                const dataConta = new Date(conta.dataVencimento);
+                return dataConta.getMonth() === mes.getMonth() && 
+                       dataConta.getFullYear() === mes.getFullYear();
+            }).length
+        });
+    }
+    
+    const evolucaoHTML = meses.map(item => `
+        <div style="margin: 10px 0; padding: 10px; background: rgba(56, 161, 105, 0.1); border-radius: 8px;">
+            <strong>${item.mes}</strong>: ${item.contas} contas
+        </div>
+    `).join('');
+    
+    graficoEvolucao.innerHTML = `
+        <div style="text-align: left;">
+            <h4 style="margin-bottom: 15px; color: #2d3748;">Evolução dos Últimos 6 Meses</h4>
+            ${evolucaoHTML}
+        </div>
+    `;
 }
 
 function renderizarContas() {

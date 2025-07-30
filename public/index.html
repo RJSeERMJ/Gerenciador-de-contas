@@ -40,77 +40,119 @@
             </div>
         </header>
 
-        <!-- Dashboard -->
-        <div class="dashboard">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon pending">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 id="contasPendentes">0</h3>
-                        <p>Contas Pendentes</p>
+        <!-- Navegação por Abas -->
+        <div class="tabs-navigation">
+            <button class="tab-btn active" onclick="mostrarAba('contas')">
+                <i class="fas fa-list"></i> Contas
+            </button>
+            <button class="tab-btn" onclick="mostrarAba('dashboard')">
+                <i class="fas fa-chart-bar"></i> Dashboard
+            </button>
+        </div>
+
+        <!-- Aba Contas -->
+        <div id="aba-contas" class="tab-content active">
+            <!-- Filtros -->
+            <div class="filters">
+                <div class="filter-group">
+                    <select id="filtroStatus" onchange="filtrarContas()">
+                        <option value="todas">Todas as Contas</option>
+                        <option value="pendentes">Pendentes</option>
+                        <option value="vencidas">Vencidas</option>
+                        <option value="pagas">Pagas</option>
+                    </select>
+                    <select id="filtroCategoria" onchange="filtrarContas()">
+                        <option value="">Todas as Categorias</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="busca" placeholder="Buscar contas..." onkeyup="filtrarContas()">
+                </div>
+            </div>
+
+            <!-- Lista de Contas -->
+            <div class="contas-container">
+                <div class="contas-header">
+                    <h2>Suas Contas</h2>
+                    <div class="contas-actions">
+                        <button class="btn btn-outline" onclick="exportarContas()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon overdue">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 id="contasVencidas">0</h3>
-                        <p>Contas Vencidas</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon paid">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 id="contasPagas">0</h3>
-                        <p>Contas Pagas</p>
-                    </div>
+                <div id="listaContas" class="contas-list">
+                    <!-- Contas serão carregadas aqui -->
                 </div>
             </div>
         </div>
 
-        <!-- Filtros -->
-        <div class="filters">
-            <div class="filter-group">
-                <select id="filtroStatus" onchange="filtrarContas()">
-                    <option value="todas">Todas as Contas</option>
-                    <option value="pendentes">Pendentes</option>
-                    <option value="vencidas">Vencidas</option>
-                    <option value="pagas">Pagas</option>
-                </select>
-                <select id="filtroCategoria" onchange="filtrarContas()">
-                    <option value="">Todas as Categorias</option>
-                    <option value="Moradia">Moradia</option>
-                    <option value="Alimentação">Alimentação</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Saúde">Saúde</option>
-                    <option value="Educação">Educação</option>
-                    <option value="Lazer">Lazer</option>
-                    <option value="Outros">Outros</option>
-                </select>
-            </div>
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="busca" placeholder="Buscar contas..." onkeyup="filtrarContas()">
-            </div>
-        </div>
-
-        <!-- Lista de Contas -->
-        <div class="contas-container">
-            <div class="contas-header">
-                <h2>Suas Contas</h2>
-                <div class="contas-actions">
-                    <button class="btn btn-outline" onclick="exportarContas()">
-                        <i class="fas fa-download"></i> Exportar
-                    </button>
+        <!-- Aba Dashboard -->
+        <div id="aba-dashboard" class="tab-content">
+            <!-- Dashboard -->
+            <div class="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasPendentes">0</h3>
+                            <p>Contas Pendentes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon overdue">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasVencidas">0</h3>
+                            <p>Contas Vencidas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon paid">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasPagas">0</h3>
+                            <p>Contas Pagas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon total">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalPendente">R$ 0,00</h3>
+                            <p>Total Pendente</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="listaContas" class="contas-list">
-                <!-- Contas serão carregadas aqui -->
+
+            <!-- Gráficos e Receitas -->
+            <div class="dashboard-charts">
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-pie"></i> Distribuição por Categoria</h3>
+                    <div id="graficoCategoria" class="chart-placeholder">
+                        <p>Gráfico de pizza mostrando distribuição de contas por categoria</p>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-line"></i> Evolução Mensal</h3>
+                    <div id="graficoEvolucao" class="chart-placeholder">
+                        <p>Gráfico de linha mostrando evolução das contas ao longo do tempo</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
