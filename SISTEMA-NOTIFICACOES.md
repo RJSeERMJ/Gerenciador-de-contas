@@ -7,22 +7,22 @@
 - **Conteúdo:** Confirmação de configuração
 - **Status:** ✅ **FUNCIONANDO**
 
-### **2. ⚠️ Alertas de Contas Vencendo**
+### **2. 📊 Relatório Completo de Contas**
+- **Quando:** Imediatamente após configurar e-mail
+- **Conteúdo:** Relatório completo de todas as contas (pagas, pendentes, vencidas)
+- **Status:** ✅ **IMPLEMENTADO**
+
+### **3. ⚠️ Alertas de Contas Vencendo**
 - **Quando:** Contas que vencem nos próximos 3 dias
-- **Frequência:** Verificação a cada 30 minutos (teste) / 6 horas (produção)
+- **Frequência:** Verificação a cada 2 horas (teste) / 6 horas (produção)
 - **Conteúdo:** Lista de contas vencendo + valores
 - **Status:** ✅ **IMPLEMENTADO**
 
-### **3. 🚨 Alertas de Contas Vencidas**
+### **4. 🚨 Alertas de Contas Vencidas**
 - **Quando:** Contas que já passaram do vencimento
-- **Frequência:** Verificação a cada 30 minutos (teste) / 6 horas (produção)
+- **Frequência:** Verificação a cada 2 horas (teste) / 6 horas (produção)
 - **Conteúdo:** Lista de contas em atraso + valores
 - **Status:** ✅ **IMPLEMENTADO**
-
-### **4. 📊 Resumos Mensais**
-- **Quando:** Fim do mês
-- **Conteúdo:** Relatório completo de contas
-- **Status:** ⚠️ **EM DESENVOLVIMENTO**
 
 ## 🧪 **COMO TESTAR AS NOTIFICAÇÕES:**
 
@@ -60,6 +60,41 @@
 - **Envio:** Só quando necessário e não repetido
 
 ## 🎯 **EXEMPLOS DE NOTIFICAÇÕES:**
+
+### **📊 Relatório Completo (ao configurar e-mail):**
+```
+Assunto: 📊 Relatório Completo - Sistema Família Jamar
+
+📊 Relatório Completo de Contas
+
+Olá! Aqui está o relatório completo de todas as suas contas:
+
+📈 Resumo Geral
+• Total de contas: 5
+• Contas pagas: 2
+• Contas pendentes: 2
+• Contas vencidas: 1
+
+💰 Valores
+• Total pago: R$ 300.00
+• Total pendente: R$ 230.00
+• Total vencido: R$ 120.00
+
+⏰ Contas Pendentes
+• Luz - R$ 150.00 - Vence: 15/08/2024 - Energia
+• Água - R$ 80.00 - Vence: 20/08/2024 - Água
+
+🚨 Contas Vencidas
+• Internet - R$ 120.00 - Venceu: 10/08/2024 - Internet
+
+✅ Contas Pagas
+• Telefone - R$ 45.00 - Paga em: 05/08/2024 - Telefone
+• Aluguel - R$ 255.00 - Paga em: 01/08/2024 - Moradia
+
+📅 Data do relatório: 15/08/2024 às 14:30:25
+
+📱 Sistema Família Jamar
+```
 
 ### **⚠️ Contas Vencendo:**
 ```
