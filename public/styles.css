@@ -363,11 +363,7 @@ body::before {
     gap: 4px;
 }
 
-.conta-valor {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #2d3748;
-}
+
 
 .conta-actions {
     display: flex;

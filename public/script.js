@@ -87,9 +87,6 @@ function criarCardConta(conta) {
                         </span>
                     </div>
                 </div>
-                <div class="conta-valor">
-                    ${formatarMoeda(conta.valor)}
-                </div>
             </div>
             <div class="conta-actions">
                 ${!conta.paga ? `

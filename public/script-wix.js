@@ -139,10 +139,6 @@ function criarCardConta(conta) {
                         ${conta.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
                     </div>
                 </div>
-                <div class="conta-valor">
-                    <h3>${formatarMoeda(conta.valor)}</h3>
-                    <p>Vence: ${formatarData(conta.dataVencimento)}</p>
-                </div>
             </div>
             <div class="conta-actions">
                 ${!conta.paga ? `
