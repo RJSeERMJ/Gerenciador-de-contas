@@ -22,28 +22,109 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Funções de armazenamento local
 function salvarDados() {
-    localStorage.setItem('familiaJamarContas', JSON.stringify(contas));
-    localStorage.setItem('familiaJamarEmail', JSON.stringify(emailConfigurado));
+    try {
+        // Verificar se localStorage está disponível
+        if (typeof localStorage === 'undefined') {
+            console.error('❌ localStorage não está disponível');
+            throw new Error('localStorage não está disponível');
+        }
+        
+        // Verificar se os dados são válidos
+        if (!Array.isArray(contas)) {
+            console.error('❌ Dados de contas inválidos:', contas);
+            throw new Error('Dados de contas inválidos');
+        }
+        
+        // Salvar dados com tratamento de erro
+        localStorage.setItem('familiaJamarContas', JSON.stringify(contas));
+        localStorage.setItem('familiaJamarEmail', JSON.stringify(emailConfigurado));
+        
+        console.log('💾 Dados salvos com sucesso:', {
+            contas: contas.length,
+            email: emailConfigurado
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar dados:', error);
+        throw error; // Re-throw para que a função chamadora possa tratar
+    }
 }
 
 function carregarDados() {
-    const contasSalvas = localStorage.getItem('familiaJamarContas');
-    const emailSalvo = localStorage.getItem('familiaJamarEmail');
-    
-    if (contasSalvas) {
-        contas = JSON.parse(contasSalvas);
-    }
-    
-    if (emailSalvo) {
-        emailConfigurado = JSON.parse(emailSalvo);
+    try {
+        // Verificar se localStorage está disponível
+        if (typeof localStorage === 'undefined') {
+            console.error('❌ localStorage não está disponível');
+            return;
+        }
+        
+        const contasSalvas = localStorage.getItem('familiaJamarContas');
+        const emailSalvo = localStorage.getItem('familiaJamarEmail');
+        
+        if (contasSalvas) {
+            try {
+                const dadosContas = JSON.parse(contasSalvas);
+                if (Array.isArray(dadosContas)) {
+                    contas = dadosContas;
+                    console.log('📋 Contas carregadas:', contas.length);
+                } else {
+                    console.warn('⚠️ Dados de contas inválidos, usando array vazio');
+                    contas = [];
+                }
+            } catch (error) {
+                console.error('❌ Erro ao parsear dados de contas:', error);
+                contas = [];
+            }
+        } else {
+            console.log('📋 Nenhuma conta salva encontrada');
+            contas = [];
+        }
+        
+        if (emailSalvo) {
+            try {
+                const dadosEmail = JSON.parse(emailSalvo);
+                if (dadosEmail && typeof dadosEmail === 'object') {
+                    emailConfigurado = dadosEmail;
+                    console.log('📧 E-mail carregado:', emailConfigurado.email);
+                } else {
+                    console.warn('⚠️ Dados de e-mail inválidos');
+                    emailConfigurado = null;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao parsear dados de e-mail:', error);
+                emailConfigurado = null;
+            }
+        } else {
+            console.log('📧 Nenhum e-mail salvo encontrado');
+            emailConfigurado = null;
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados:', error);
+        contas = [];
+        emailConfigurado = null;
     }
 }
 
 // Funções do dashboard
 function definirDataMinima() {
-    const hoje = new Date().toISOString().split('T')[0];
-    document.getElementById('dataVencimento').min = hoje;
-    document.getElementById('editDataVencimento').min = hoje;
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        const elementos = ['dataVencimento', 'editDataVencimento'];
+        
+        elementos.forEach(id => {
+            const elemento = document.getElementById(id);
+            if (elemento) {
+                elemento.min = hoje;
+            } else {
+                console.warn(`⚠️ Elemento #${id} não encontrado`);
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao definir data mínima:', error);
+    }
 }
 
 // Funções de Navegação por Abas
@@ -72,16 +153,36 @@ function mostrarAba(aba) {
 }
 
 function atualizarDashboard() {
-    const hoje = new Date();
-    const contasPendentes = contas.filter(conta => !conta.paga);
-    const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
-    const contasPagas = contas.filter(conta => conta.paga);
-    const totalPendente = contasPendentes.reduce((total, conta) => total + parseFloat(conta.valor), 0);
-    
-    document.getElementById('contasPendentes').textContent = contasPendentes.length;
-    document.getElementById('contasVencidas').textContent = contasVencidas.length;
-    document.getElementById('contasPagas').textContent = contasPagas.length;
-    document.getElementById('totalPendente').textContent = formatarMoeda(totalPendente);
+    try {
+        const hoje = new Date();
+        const contasPendentes = contas.filter(conta => !conta.paga);
+        const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
+        const contasPagas = contas.filter(conta => conta.paga);
+        const totalPendente = contasPendentes.reduce((total, conta) => {
+            const valor = parseFloat(conta.valor) || 0;
+            return total + valor;
+        }, 0);
+        
+        // Atualizar elementos do dashboard com verificações de segurança
+        const elementos = {
+            'contasPendentes': contasPendentes.length,
+            'contasVencidas': contasVencidas.length,
+            'contasPagas': contasPagas.length,
+            'totalPendente': formatarMoeda(totalPendente)
+        };
+        
+        Object.entries(elementos).forEach(([id, valor]) => {
+            const elemento = document.getElementById(id);
+            if (elemento) {
+                elemento.textContent = valor;
+            } else {
+                console.warn(`⚠️ Elemento #${id} não encontrado no dashboard`);
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao atualizar dashboard:', error);
+    }
 }
 
 // Função para atualizar gráficos
@@ -147,51 +248,71 @@ function atualizarGraficos() {
 }
 
 function renderizarContas() {
-    const listaContas = document.getElementById('listaContas');
-    const filtroStatus = document.getElementById('filtroStatus').value;
-    const filtroCategoria = document.getElementById('filtroCategoria').value;
-    const busca = document.getElementById('busca').value.toLowerCase();
-    
-    let contasFiltradas = contas.filter(conta => conta.tipo === 'conta'); // Mostrar apenas contas
-    
-    // Filtrar por status
-    if (filtroStatus === 'pendentes') {
-        contasFiltradas = contasFiltradas.filter(conta => !conta.paga);
-    } else if (filtroStatus === 'vencidas') {
-        const hoje = new Date();
-        contasFiltradas = contasFiltradas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
-    } else if (filtroStatus === 'pagas') {
-        contasFiltradas = contasFiltradas.filter(conta => conta.paga);
+    try {
+        const listaContas = document.getElementById('listaContas');
+        if (!listaContas) {
+            console.error('❌ Elemento #listaContas não encontrado');
+            return;
+        }
+        
+        const filtroStatus = document.getElementById('filtroStatus')?.value || 'todas';
+        const filtroCategoria = document.getElementById('filtroCategoria')?.value || '';
+        const busca = document.getElementById('busca')?.value?.toLowerCase() || '';
+        
+        let contasFiltradas = contas.filter(conta => conta.tipo === 'conta'); // Mostrar apenas contas
+        
+        // Filtrar por status
+        if (filtroStatus === 'pendentes') {
+            contasFiltradas = contasFiltradas.filter(conta => !conta.paga);
+        } else if (filtroStatus === 'vencidas') {
+            const hoje = new Date();
+            contasFiltradas = contasFiltradas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
+        } else if (filtroStatus === 'pagas') {
+            contasFiltradas = contasFiltradas.filter(conta => conta.paga);
+        }
+        
+        // Filtrar por categoria
+        if (filtroCategoria) {
+            contasFiltradas = contasFiltradas.filter(conta => conta.categoria === filtroCategoria);
+        }
+        
+        // Filtrar por busca
+        if (busca) {
+            contasFiltradas = contasFiltradas.filter(conta => 
+                conta.descricao.toLowerCase().includes(busca) ||
+                conta.categoria.toLowerCase().includes(busca)
+            );
+        }
+        
+        // Ordenar por data de vencimento
+        contasFiltradas.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+        
+        if (contasFiltradas.length === 0) {
+            listaContas.innerHTML = `
+                <div class="conta-item" style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+                    <h3>Nenhuma conta encontrada</h3>
+                    <p>Adicione sua primeira conta clicando em "Nova Conta"</p>
+                </div>
+            `;
+            return;
+        }
+        
+        listaContas.innerHTML = contasFiltradas.map(conta => criarCardConta(conta)).join('');
+        
+    } catch (error) {
+        console.error('❌ Erro ao renderizar contas:', error);
+        const listaContas = document.getElementById('listaContas');
+        if (listaContas) {
+            listaContas.innerHTML = `
+                <div class="conta-item" style="text-align: center; padding: 40px; color: #ff6b6b;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+                    <h3>Erro ao carregar contas</h3>
+                    <p>Recarregue a página para tentar novamente</p>
+                </div>
+            `;
+        }
     }
-    
-    // Filtrar por categoria
-    if (filtroCategoria) {
-        contasFiltradas = contasFiltradas.filter(conta => conta.categoria === filtroCategoria);
-    }
-    
-    // Filtrar por busca
-    if (busca) {
-        contasFiltradas = contasFiltradas.filter(conta => 
-            conta.descricao.toLowerCase().includes(busca) ||
-            conta.categoria.toLowerCase().includes(busca)
-        );
-    }
-    
-    // Ordenar por data de vencimento
-    contasFiltradas.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
-    
-    if (contasFiltradas.length === 0) {
-        listaContas.innerHTML = `
-            <div class="conta-item" style="text-align: center; padding: 40px; color: #666;">
-                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
-                <h3>Nenhuma conta encontrada</h3>
-                <p>Adicione sua primeira conta clicando em "Nova Conta"</p>
-            </div>
-        `;
-        return;
-    }
-    
-    listaContas.innerHTML = contasFiltradas.map(conta => criarCardConta(conta)).join('');
 }
 
 function criarCardConta(conta) {
@@ -395,18 +516,68 @@ async function deletarConta(id) {
 }
 
 async function marcarComoPaga(id) {
-    const contaIndex = contas.findIndex(c => c.id === id);
-    if (contaIndex === -1) return;
-    
-    contas[contaIndex].paga = true;
-    contas[contaIndex].dataPagamento = new Date().toISOString();
-    
-    salvarDados();
-    
-    atualizarDashboard();
-    renderizarContas();
-    
-    mostrarMensagem('Conta marcada como paga!', 'success');
+    try {
+        console.log('🔍 Tentando marcar conta como paga:', id);
+        
+        // Verificar se o ID é válido
+        if (!id || isNaN(id)) {
+            console.error('❌ ID inválido:', id);
+            mostrarMensagem('Erro: ID da conta inválido', 'error');
+            return;
+        }
+        
+        // Verificar se a conta existe
+        const contaIndex = contas.findIndex(c => c.id === id);
+        if (contaIndex === -1) {
+            console.error('❌ Conta não encontrada:', id);
+            mostrarMensagem('Erro: Conta não encontrada', 'error');
+            return;
+        }
+        
+        // Verificar se a conta já está paga
+        if (contas[contaIndex].paga) {
+            console.log('ℹ️ Conta já está marcada como paga:', id);
+            mostrarMensagem('Esta conta já está marcada como paga!', 'info');
+            return;
+        }
+        
+        // Marcar como paga
+        contas[contaIndex].paga = true;
+        contas[contaIndex].dataPagamento = new Date().toISOString();
+        
+        console.log('✅ Conta marcada como paga:', contas[contaIndex]);
+        
+        // Salvar dados
+        try {
+            salvarDados();
+            console.log('💾 Dados salvos com sucesso');
+        } catch (error) {
+            console.error('❌ Erro ao salvar dados:', error);
+            mostrarMensagem('Erro ao salvar dados', 'error');
+            return;
+        }
+        
+        // Atualizar interface
+        try {
+            atualizarDashboard();
+            console.log('📊 Dashboard atualizado');
+        } catch (error) {
+            console.error('❌ Erro ao atualizar dashboard:', error);
+        }
+        
+        try {
+            renderizarContas();
+            console.log('📋 Lista de contas atualizada');
+        } catch (error) {
+            console.error('❌ Erro ao renderizar contas:', error);
+        }
+        
+        mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Erro inesperado ao marcar conta como paga:', error);
+        mostrarMensagem('Erro inesperado ao processar pagamento', 'error');
+    }
 }
 
 // Funções de modal
