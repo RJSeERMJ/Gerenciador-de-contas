@@ -278,8 +278,8 @@ app.post('/api/configurar-email', async (req, res) => {
             });
         }
         
-        // Enviar e-mail de teste para confirmar
-        const assunto = 'Confirmação - Sistema Família Jamar';
+        // Enviar e-mail de confirmação
+        const assunto = '✅ E-mail Configurado - Sistema Família Jamar';
         const conteudo = `
             <h2>✅ E-mail configurado com sucesso!</h2>
             <p>Olá! Seu e-mail foi configurado no Sistema Família Jamar.</p>
@@ -296,9 +296,16 @@ app.post('/api/configurar-email', async (req, res) => {
         if (sucesso) {
             console.log('✅ E-mail de confirmação enviado com sucesso');
             emailConfigurado = email; // Atualiza a configuração do e-mail
+            
+            // Enviar relatório completo de todas as contas
+            if (contas.length > 0) {
+                console.log('📊 Enviando relatório completo de contas...');
+                await enviarRelatorioCompleto(email);
+            }
+            
             res.json({ 
                 success: true, 
-                message: 'E-mail configurado com sucesso! Verifique sua caixa de entrada.' 
+                message: 'E-mail configurado com sucesso! Verifique sua caixa de entrada para o relatório completo.' 
             });
         } else {
             console.log('❌ Falha ao enviar e-mail de confirmação');
@@ -316,6 +323,97 @@ app.post('/api/configurar-email', async (req, res) => {
         });
     }
 });
+
+// Função para enviar relatório completo de contas
+async function enviarRelatorioCompleto(email) {
+    try {
+        const hoje = new Date();
+        
+        // Separar contas por status
+        const contasPagas = contas.filter(conta => conta.paga);
+        const contasPendentes = contas.filter(conta => 
+            !conta.paga && new Date(conta.dataVencimento) >= hoje
+        );
+        const contasVencidas = contas.filter(conta => 
+            !conta.paga && new Date(conta.dataVencimento) < hoje
+        );
+        
+        // Calcular totais
+        const totalPendente = contasPendentes.reduce((sum, conta) => 
+            sum + parseFloat(conta.valor), 0
+        );
+        const totalVencido = contasVencidas.reduce((sum, conta) => 
+            sum + parseFloat(conta.valor), 0
+        );
+        const totalPago = contasPagas.reduce((sum, conta) => 
+            sum + parseFloat(conta.valor), 0
+        );
+        
+        const assunto = '📊 Relatório Completo - Sistema Família Jamar';
+        const conteudo = `
+            <h2>📊 Relatório Completo de Contas</h2>
+            <p>Olá! Aqui está o relatório completo de todas as suas contas:</p>
+            <br>
+            
+            <h3>📈 Resumo Geral</h3>
+            <ul>
+                <li><strong>Total de contas:</strong> ${contas.length}</li>
+                <li><strong>Contas pagas:</strong> ${contasPagas.length}</li>
+                <li><strong>Contas pendentes:</strong> ${contasPendentes.length}</li>
+                <li><strong>Contas vencidas:</strong> ${contasVencidas.length}</li>
+            </ul>
+            <br>
+            
+            <h3>💰 Valores</h3>
+            <ul>
+                <li><strong>Total pago:</strong> R$ ${totalPago.toFixed(2)}</li>
+                <li><strong>Total pendente:</strong> R$ ${totalPendente.toFixed(2)}</li>
+                <li><strong>Total vencido:</strong> R$ ${totalVencido.toFixed(2)}</li>
+            </ul>
+            <br>
+            
+            ${contasPendentes.length > 0 ? `
+            <h3>⏰ Contas Pendentes</h3>
+            <ul>
+                ${contasPendentes.map(conta => `
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')} - ${conta.categoria}</li>
+                `).join('')}
+            </ul>
+            <br>
+            ` : ''}
+            
+            ${contasVencidas.length > 0 ? `
+            <h3>🚨 Contas Vencidas</h3>
+            <ul>
+                ${contasVencidas.map(conta => `
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')} - ${conta.categoria}</li>
+                `).join('')}
+            </ul>
+            <br>
+            ` : ''}
+            
+            ${contasPagas.length > 0 ? `
+            <h3>✅ Contas Pagas</h3>
+            <ul>
+                ${contasPagas.map(conta => `
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Paga em: ${conta.dataPagamento ? new Date(conta.dataPagamento).toLocaleDateString('pt-BR') : 'Data não registrada'} - ${conta.categoria}</li>
+                `).join('')}
+            </ul>
+            <br>
+            ` : ''}
+            
+            <p><strong>📅 Data do relatório:</strong> ${hoje.toLocaleDateString('pt-BR')} às ${hoje.toLocaleTimeString('pt-BR')}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        await enviarEmail(email, assunto, conteudo);
+        console.log('📊 Relatório completo enviado com sucesso');
+        
+    } catch (error) {
+        console.log('❌ Erro ao enviar relatório completo:', error.message);
+    }
+}
 
 // Rota para estatísticas
 app.get('/api/estatisticas', (req, res) => {
