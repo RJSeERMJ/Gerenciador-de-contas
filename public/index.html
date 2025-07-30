@@ -176,19 +176,27 @@
                     <input type="date" id="dataVencimento" name="dataVencimento" required>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="categoria">Categoria</label>
-                        <select id="categoria" name="categoria" required>
-                            <option value="">Selecione uma categoria</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    </div>
+                                    <div class="form-group">
+                    <label for="tipo">Tipo</label>
+                    <select id="tipo" name="tipo" required onchange="atualizarCategorias()">
+                        <option value="">Selecione o tipo</option>
+                        <option value="conta">Conta</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="categoria">Categoria</label>
+                    <select id="categoria" name="categoria" required>
+                        <option value="">Selecione uma categoria</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="recorrente" name="recorrente">
@@ -225,19 +233,27 @@
                     <input type="date" id="editDataVencimento" name="dataVencimento" required>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="editCategoria">Categoria</label>
-                        <select id="editCategoria" name="categoria" required>
-                            <option value="">Selecione uma categoria</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    </div>
+                                    <div class="form-group">
+                    <label for="editTipo">Tipo</label>
+                    <select id="editTipo" name="tipo" required onchange="atualizarCategoriasEdit()">
+                        <option value="">Selecione o tipo</option>
+                        <option value="conta">Conta</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editCategoria">Categoria</label>
+                    <select id="editCategoria" name="categoria" required>
+                        <option value="">Selecione uma categoria</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="editRecorrente" name="recorrente">

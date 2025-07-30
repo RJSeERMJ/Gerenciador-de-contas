@@ -152,7 +152,7 @@ function renderizarContas() {
     const filtroCategoria = document.getElementById('filtroCategoria').value;
     const busca = document.getElementById('busca').value.toLowerCase();
     
-    let contasFiltradas = contas;
+    let contasFiltradas = contas.filter(conta => conta.tipo === 'conta'); // Mostrar apenas contas
     
     // Filtrar por status
     if (filtroStatus === 'pendentes') {
@@ -246,6 +246,63 @@ function criarCardConta(conta) {
     `;
 }
 
+// Funções para atualizar categorias baseado no tipo
+function atualizarCategorias() {
+    const tipo = document.getElementById('tipo').value;
+    const categoriaSelect = document.getElementById('categoria');
+    
+    // Limpar opções atuais
+    categoriaSelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+    
+    if (tipo === 'conta') {
+        // Categorias para contas
+        const categoriasConta = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Outros'];
+        categoriasConta.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    } else if (tipo === 'receita') {
+        // Categorias para receitas
+        const categoriasReceita = ['Salário', 'Freelance', 'Investimentos', 'Vendas', 'Presentes', 'Outros'];
+        categoriasReceita.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    }
+}
+
+function atualizarCategoriasEdit() {
+    const tipo = document.getElementById('editTipo').value;
+    const categoriaSelect = document.getElementById('editCategoria');
+    
+    // Limpar opções atuais
+    categoriaSelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+    
+    if (tipo === 'conta') {
+        // Categorias para contas
+        const categoriasConta = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Outros'];
+        categoriasConta.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    } else if (tipo === 'receita') {
+        // Categorias para receitas
+        const categoriasReceita = ['Salário', 'Freelance', 'Investimentos', 'Vendas', 'Presentes', 'Outros'];
+        categoriasReceita.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    }
+}
+
 // Funções de filtro
 function filtrarContas() {
     renderizarContas();
@@ -262,6 +319,7 @@ async function salvarConta(event) {
         valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
+        tipo: formData.get('tipo'),
         paga: false,
         recorrente: formData.get('recorrente') === 'on',
         dataCriacao: new Date().toISOString()
@@ -289,6 +347,7 @@ async function editarConta(id) {
     document.getElementById('editId').value = conta.id;
     document.getElementById('editDescricao').value = conta.descricao;
     document.getElementById('editDataVencimento').value = conta.dataVencimento;
+    document.getElementById('editTipo').value = conta.tipo || 'conta';
     document.getElementById('editCategoria').value = conta.categoria;
     document.getElementById('editRecorrente').checked = conta.recorrente;
     
@@ -310,6 +369,7 @@ async function atualizarConta(event) {
         valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
+        tipo: formData.get('tipo'),
         recorrente: formData.get('recorrente') === 'on'
     };
     

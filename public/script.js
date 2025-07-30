@@ -57,10 +57,12 @@ function mostrarAba(aba) {
 // Funções do Dashboard
 function atualizarDashboard() {
     const hoje = new Date();
-    const contasPendentes = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) >= hoje);
-    const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
-    const contasPagas = contas.filter(conta => conta.paga);
+    const contasPendentes = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) >= hoje && conta.tipo === 'conta');
+    const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje && conta.tipo === 'conta');
+    const contasPagas = contas.filter(conta => conta.paga && conta.tipo === 'conta');
+    const receitas = contas.filter(conta => conta.tipo === 'receita');
     const totalPendente = contasPendentes.reduce((total, conta) => total + conta.valor, 0);
+    const totalReceitas = receitas.reduce((total, conta) => total + conta.valor, 0);
 
     document.getElementById('contasPendentes').textContent = contasPendentes.length;
     document.getElementById('contasVencidas').textContent = contasVencidas.length;
@@ -76,9 +78,10 @@ function atualizarGraficos() {
     const graficoCategoria = document.getElementById('graficoCategoria');
     const graficoEvolucao = document.getElementById('graficoEvolucao');
     
-    // Estatísticas por categoria
+    // Estatísticas por categoria (apenas contas)
     const categorias = {};
-    contas.forEach(conta => {
+    const contasFiltradas = contas.filter(conta => conta.tipo === 'conta');
+    contasFiltradas.forEach(conta => {
         if (!categorias[conta.categoria]) {
             categorias[conta.categoria] = { count: 0, total: 0 };
         }
@@ -194,6 +197,63 @@ function criarCardConta(conta) {
     `;
 }
 
+// Funções para atualizar categorias baseado no tipo
+function atualizarCategorias() {
+    const tipo = document.getElementById('tipo').value;
+    const categoriaSelect = document.getElementById('categoria');
+    
+    // Limpar opções atuais
+    categoriaSelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+    
+    if (tipo === 'conta') {
+        // Categorias para contas
+        const categoriasConta = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Outros'];
+        categoriasConta.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    } else if (tipo === 'receita') {
+        // Categorias para receitas
+        const categoriasReceita = ['Salário', 'Freelance', 'Investimentos', 'Vendas', 'Presentes', 'Outros'];
+        categoriasReceita.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    }
+}
+
+function atualizarCategoriasEdit() {
+    const tipo = document.getElementById('editTipo').value;
+    const categoriaSelect = document.getElementById('editCategoria');
+    
+    // Limpar opções atuais
+    categoriaSelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+    
+    if (tipo === 'conta') {
+        // Categorias para contas
+        const categoriasConta = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Outros'];
+        categoriasConta.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    } else if (tipo === 'receita') {
+        // Categorias para receitas
+        const categoriasReceita = ['Salário', 'Freelance', 'Investimentos', 'Vendas', 'Presentes', 'Outros'];
+        categoriasReceita.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoriaSelect.appendChild(option);
+        });
+    }
+}
+
 // Funções de filtro
 function filtrarContas() {
     const filtroStatus = document.getElementById('filtroStatus').value;
@@ -201,6 +261,11 @@ function filtrarContas() {
     const busca = document.getElementById('busca').value.toLowerCase();
 
     contasFiltradas = contas.filter(conta => {
+        // Filtro por tipo - mostrar apenas contas na aba contas
+        if (conta.tipo !== 'conta') {
+            return false;
+        }
+        
         // Filtro por status
         const hoje = new Date();
         const dataVencimento = new Date(conta.dataVencimento);
@@ -238,6 +303,7 @@ async function salvarConta(event) {
         valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
+        tipo: formData.get('tipo'),
         recorrente: formData.has('recorrente')
     };
 
@@ -271,6 +337,7 @@ async function editarConta(id) {
     document.getElementById('editId').value = conta.id;
     document.getElementById('editDescricao').value = conta.descricao;
     document.getElementById('editDataVencimento').value = conta.dataVencimento;
+    document.getElementById('editTipo').value = conta.tipo || 'conta';
     document.getElementById('editCategoria').value = conta.categoria;
     document.getElementById('editRecorrente').checked = conta.recorrente;
 
@@ -287,6 +354,7 @@ async function atualizarConta(event) {
         valor: 0, // Valor padrão já que removemos o campo
         dataVencimento: formData.get('dataVencimento'),
         categoria: formData.get('categoria'),
+        tipo: formData.get('tipo'),
         recorrente: formData.has('recorrente'),
         paga: contas.find(c => c.id == id)?.paga || false
     };
