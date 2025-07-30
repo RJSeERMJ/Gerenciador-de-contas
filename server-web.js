@@ -11,7 +11,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
+
+// Servir arquivos estáticos da pasta Família Jamar
+app.use(express.static(path.join(__dirname, 'Família Jamar - Sistema Completo', 'public')));
 
 // Armazenamento em memória (para Vercel)
 let contas = [];
@@ -150,9 +152,9 @@ app.get('/api/estatisticas', (req, res) => {
     });
 });
 
-// Rota principal
+// Rota principal - usar o index.html da Família Jamar
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'Família Jamar - Sistema Completo', 'public', 'index.html'));
 });
 
 // Iniciar servidor
