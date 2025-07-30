@@ -210,10 +210,54 @@ db.serialize(() => {
         recorrente BOOLEAN DEFAULT 0,
         dataCriacao DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+    
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        cpf TEXT NOT NULL,
+        token_acesso TEXT UNIQUE,
+        data_solicitacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+        data_confirmacao DATETIME,
+        aprovado BOOLEAN DEFAULT 0
+    )`);
 });
 
 // Funções do banco de dados
 const database = {
+    // Funções de autenticação
+    async solicitarAcesso(email, cpf) {
+        return new Promise((resolve, reject) => {
+            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            
+            db.run('INSERT OR REPLACE INTO usuarios (email, cpf, token_acesso) VALUES (?, ?, ?)', 
+                [email, cpf, token], function(err) {
+                if (err) reject(err);
+                else resolve({ token, email, cpf });
+            });
+        });
+    },
+
+    async confirmarAcesso(token) {
+        return new Promise((resolve, reject) => {
+            const dataConfirmacao = new Date().toISOString();
+            db.run('UPDATE usuarios SET aprovado = 1, data_confirmacao = ? WHERE token_acesso = ?', 
+                [dataConfirmacao, token], function(err) {
+                if (err) reject(err);
+                else if (this.changes > 0) resolve(true);
+                else reject(new Error('Token inválido ou já usado'));
+            });
+        });
+    },
+
+    async verificarAcesso(email) {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT aprovado FROM usuarios WHERE email = ?', [email], (err, row) => {
+                if (err) reject(err);
+                else resolve(row ? row.aprovado === 1 : false);
+            });
+        });
+    },
+
     async getAllContas() {
         return new Promise((resolve, reject) => {
             db.all('SELECT * FROM contas ORDER BY dataVencimento', (err, rows) => {
@@ -278,6 +322,110 @@ const database = {
 };
 
 // Rotas da API
+app.post('/api/solicitar-acesso', async (req, res) => {
+    try {
+        const { email, cpf } = req.body;
+        
+        if (!email || !cpf) {
+            return res.status(400).json({ error: 'E-mail e CPF são obrigatórios' });
+        }
+
+        // Verificar se é o CPF autorizado
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        if (cpfLimpo !== '15119236790') {
+            return res.status(403).json({ error: 'CPF não autorizado' });
+        }
+
+        const resultado = await database.solicitarAcesso(email, cpf);
+        
+        // Enviar e-mail de confirmação
+        const assunto = '🔐 Confirmação de Acesso - Família Jamar';
+        const conteudo = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                <div style="background-color: #667eea; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">🏠 Família Jamar</h1>
+                    <p style="margin: 10px 0 0 0;">Sistema de Gerenciamento de Contas</p>
+                </div>
+                
+                <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h2 style="color: #333; margin-top: 0;">🔐 Confirmação de Acesso</h2>
+                    
+                    <p style="color: #666; line-height: 1.6;">
+                        Olá! Você solicitou acesso ao sistema <strong>Família Jamar</strong>.
+                    </p>
+                    
+                    <div style="background-color: #e8f5e8; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0;">
+                        <p style="margin: 0; color: #2e7d32; font-weight: bold;">
+                            ✅ Seu CPF foi verificado e está autorizado!
+                        </p>
+                    </div>
+                    
+                    <p style="color: #666; line-height: 1.6;">
+                        Para confirmar seu acesso e ativar sua conta, clique no botão abaixo:
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${req.protocol}://${req.get('host')}/confirmar.html?token=${resultado.token}" 
+                           style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: 600; display: inline-block;">
+                            🔓 Confirmar Acesso
+                        </a>
+                    </div>
+                    
+                    <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p style="margin: 0; color: #856404;">
+                            💡 <strong>Importante:</strong> Este link é válido apenas uma vez e expira em 24 horas.
+                        </p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; margin-top: 30px; text-align: center;">
+                        Sistema Família Jamar - Gerenciador de Contas<br>
+                        <strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        const emailEnviado = await enviarEmail(email, assunto, conteudo);
+        
+        if (emailEnviado) {
+            res.json({ 
+                success: true, 
+                message: 'Solicitação enviada com sucesso! Verifique seu e-mail para confirmar o acesso.',
+                email: email
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                message: 'Solicitação enviada, mas não foi possível enviar o e-mail. Verifique as configurações.',
+                email: email
+            });
+        }
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/confirmar-acesso', async (req, res) => {
+    try {
+        const { token } = req.body;
+        
+        if (!token) {
+            return res.status(400).json({ error: 'Token é obrigatório' });
+        }
+
+        await database.confirmarAcesso(token);
+        
+        res.json({ 
+            success: true, 
+            message: 'Acesso confirmado com sucesso!'
+        });
+        
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 app.get('/api/contas', async (req, res) => {
     try {
         const contas = await database.getAllContas();
@@ -416,9 +564,19 @@ app.post('/api/configurar-email', async (req, res) => {
     }
 });
 
-// Rota principal
+// Rota principal - redireciona para login
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Rota para o sistema principal (após login)
+app.get('/sistema', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Rota para página de confirmação
+app.get('/confirmar.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'confirmar.html'));
 });
 
 // Iniciar servidor
