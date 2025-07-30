@@ -26,7 +26,7 @@ const emailConfigs = {
         port: 587,
         secure: false,
         auth: {
-            user: 'jamarestudo@gmail.com',
+            user: 'jamarestudo@gmail.com', // E-mail que ENVIA as notificações
             pass: process.env.EMAIL_PASSWORD || 'sua_senha_aqui'
         }
     }
@@ -35,17 +35,37 @@ const emailConfigs = {
 // Função para enviar e-mail
 async function enviarEmail(destinatario, assunto, conteudo) {
     try {
+        // Verificar se a senha está configurada
+        if (!process.env.EMAIL_PASSWORD || process.env.EMAIL_PASSWORD === 'sua_senha_aqui') {
+            console.log('❌ Senha de e-mail não configurada');
+            return false;
+        }
+        
         const transporter = nodemailer.createTransporter(emailConfigs.gmail);
+        
+        // Verificar conexão
+        await transporter.verify();
+        
+        // Enviar e-mail
         await transporter.sendMail({
             from: 'jamarestudo@gmail.com',
             to: destinatario,
             subject: assunto,
             html: conteudo
         });
-        console.log('✅ E-mail enviado com sucesso');
+        
+        console.log('✅ E-mail enviado com sucesso para:', destinatario);
         return true;
     } catch (error) {
         console.log('❌ Erro ao enviar e-mail:', error.message);
+        
+        // Logs específicos para debug
+        if (error.code === 'EAUTH') {
+            console.log('❌ Erro de autenticação - verifique a senha do Gmail');
+        } else if (error.code === 'ECONNECTION') {
+            console.log('❌ Erro de conexão com o servidor SMTP');
+        }
+        
         return false;
     }
 }
@@ -121,6 +141,44 @@ app.post('/api/enviar-email', async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Rota para configurar e-mail
+app.post('/api/configurar-email', async (req, res) => {
+    const { email } = req.body;
+    
+    try {
+        // Enviar e-mail de teste para confirmar
+        const assunto = 'Confirmação - Sistema Família Jamar';
+        const conteudo = `
+            <h2>✅ E-mail configurado com sucesso!</h2>
+            <p>Olá! Seu e-mail foi configurado no Sistema Família Jamar.</p>
+            <p>A partir de agora você receberá notificações sobre suas contas neste e-mail.</p>
+            <br>
+            <p><strong>E-mail configurado:</strong> ${email}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        const sucesso = await enviarEmail(email, assunto, conteudo);
+        
+        if (sucesso) {
+            res.json({ 
+                success: true, 
+                message: 'E-mail configurado com sucesso! Verifique sua caixa de entrada.' 
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Erro ao enviar e-mail de confirmação. Verifique a configuração do servidor.' 
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor: ' + error.message 
+        });
     }
 });
 
