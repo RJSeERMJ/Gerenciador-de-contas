@@ -52,11 +52,8 @@ function atualizarDashboard() {
     const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
     const contasPagas = contas.filter(conta => conta.paga);
     
-    const totalPendente = contasPendentes.reduce((total, conta) => total + parseFloat(conta.valor), 0);
-    
     document.getElementById('contasPendentes').textContent = contasPendentes.length;
     document.getElementById('contasVencidas').textContent = contasVencidas.length;
-    document.getElementById('totalPendente').textContent = formatarMoeda(totalPendente);
     document.getElementById('contasPagas').textContent = contasPagas.length;
 }
 
