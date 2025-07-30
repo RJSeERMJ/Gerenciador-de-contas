@@ -8,6 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .form-help {
             display: block;
@@ -31,6 +32,9 @@
                     <button class="btn btn-primary" onclick="abrirModalNovaConta()">
                         <i class="fas fa-plus"></i> Nova Conta
                     </button>
+                    <button class="btn btn-outline" onclick="abrirModalReceita()">
+                        <i class="fas fa-plus-circle"></i> Nova Receita
+                    </button>
                     <div class="desktop-info" id="desktopInfo" style="display: none;">
                         <span class="desktop-badge">
                             <i class="fas fa-desktop"></i> Desktop App
@@ -40,8 +44,18 @@
             </div>
         </header>
 
+        <!-- Navegação por Abas -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="mostrarAba('contas')">
+                <i class="fas fa-list"></i> Contas
+            </button>
+            <button class="tab-btn" onclick="mostrarAba('dashboard')">
+                <i class="fas fa-chart-pie"></i> Dashboard
+            </button>
+        </div>
+
         <!-- Dashboard -->
-        <div class="dashboard">
+        <div class="dashboard" id="dashboard-stats">
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon pending">
@@ -78,6 +92,64 @@
                         <h3 id="contasPagas">0</h3>
                         <p>Contas Pagas</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard com Gráficos -->
+        <div class="dashboard-tab" id="dashboard-tab" style="display: none;">
+            <div class="dashboard-header">
+                <h2><i class="fas fa-chart-pie"></i> Dashboard Financeiro</h2>
+                <div class="dashboard-actions">
+                    <button class="btn btn-outline" onclick="atualizarGraficos()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Resumo Financeiro -->
+            <div class="financial-summary">
+                <div class="summary-card">
+                    <h3>Total de Custos</h3>
+                    <p class="summary-value" id="totalCustos">R$ 0,00</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Total de Receitas</h3>
+                    <p class="summary-value" id="totalReceitas">R$ 0,00</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Saldo</h3>
+                    <p class="summary-value" id="saldo">R$ 0,00</p>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="charts-container">
+                <div class="chart-section">
+                    <h3>Custos por Categoria</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="graficoPizza" width="400" height="400"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-section">
+                    <h3>Custos por Categoria (Gráfico de Barras)</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="graficoBarras" width="400" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Receitas -->
+            <div class="receitas-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-plus-circle"></i> Receitas</h3>
+                    <button class="btn btn-primary" onclick="abrirModalReceita()">
+                        <i class="fas fa-plus"></i> Nova Receita
+                    </button>
+                </div>
+                <div id="listaReceitas" class="receitas-list">
+                    <!-- Receitas serão carregadas aqui -->
                 </div>
             </div>
         </div>
@@ -254,6 +326,58 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalConfigurarEmail()">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nova Receita -->
+    <div id="modalNovaReceita" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> Nova Receita</h2>
+                <button class="close-btn" onclick="fecharModalNovaReceita()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="formNovaReceita" onsubmit="salvarReceita(event)">
+                <div class="form-group">
+                    <label for="descricaoReceita">Descrição</label>
+                    <input type="text" id="descricaoReceita" name="descricao" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valorReceita">Valor (R$)</label>
+                        <input type="number" id="valorReceita" name="valor" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataReceita">Data</label>
+                        <input type="date" id="dataReceita" name="data" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="categoriaReceita">Categoria</label>
+                        <select id="categoriaReceita" name="categoria" required>
+                            <option value="">Selecione uma categoria</option>
+                            <option value="Salário">Salário</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Investimentos">Investimentos</option>
+                            <option value="Vendas">Vendas</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="recorrenteReceita" name="recorrente">
+                            <span class="checkmark"></span>
+                            Receita Recorrente
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalNovaReceita()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Receita</button>
                 </div>
             </form>
         </div>

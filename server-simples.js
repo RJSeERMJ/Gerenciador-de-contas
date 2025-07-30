@@ -579,10 +579,16 @@ app.get('/confirmar.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'confirmar.html'));
 });
 
+// Rota para página de teste de imagem
+app.get('/teste-imagem', (req, res) => {
+    res.sendFile(path.join(__dirname, 'teste-imagem.html'));
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
     console.log(`🚀 Servidor simples rodando em http://localhost:${PORT}`);
     console.log(`✅ Sistema funcionando sem notificações`);
     console.log(`📱 Acesse: http://localhost:${PORT}`);
+    console.log(`🧪 Teste imagem: http://localhost:${PORT}/teste-imagem`);
     console.log(`💡 Para parar: Ctrl+C`);
 }); 

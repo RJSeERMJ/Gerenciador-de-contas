@@ -499,3 +499,184 @@ window.onclick = function(event) {
         }
     });
 } 
+
+// ================= DASHBOARD E RECEITAS =================
+
+// Variável global para receitas
+let receitas = [];
+
+// Carregar receitas do localStorage
+function carregarReceitas() {
+    const receitasSalvas = localStorage.getItem('receitas');
+    receitas = receitasSalvas ? JSON.parse(receitasSalvas) : [];
+    renderizarReceitas();
+    atualizarResumoFinanceiro();
+    atualizarGraficos();
+}
+
+// Salvar receitas no localStorage
+function salvarReceitasLocal() {
+    localStorage.setItem('receitas', JSON.stringify(receitas));
+}
+
+// Abrir modal de nova receita
+function abrirModalReceita() {
+    document.getElementById('modalNovaReceita').style.display = 'block';
+    document.getElementById('formNovaReceita').reset();
+}
+
+// Fechar modal de nova receita
+function fecharModalNovaReceita() {
+    document.getElementById('modalNovaReceita').style.display = 'none';
+}
+
+// Salvar receita
+function salvarReceita(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const receita = {
+        id: Date.now(),
+        descricao: formData.get('descricao'),
+        valor: parseFloat(formData.get('valor')),
+        data: formData.get('data'),
+        categoria: formData.get('categoria'),
+        recorrente: formData.has('recorrente')
+    };
+    receitas.push(receita);
+    salvarReceitasLocal();
+    fecharModalNovaReceita();
+    renderizarReceitas();
+    atualizarResumoFinanceiro();
+    atualizarGraficos();
+    mostrarMensagem('Receita adicionada com sucesso!', 'success');
+}
+
+// Renderizar lista de receitas
+function renderizarReceitas() {
+    const container = document.getElementById('listaReceitas');
+    if (!container) return;
+    if (receitas.length === 0) {
+        container.innerHTML = `<div class="message info"><i class="fas fa-info-circle"></i> Nenhuma receita cadastrada.</div>`;
+        return;
+    }
+    container.innerHTML = receitas.map(receita => criarCardReceita(receita)).join('');
+}
+
+function criarCardReceita(receita) {
+    return `
+        <div class="receita-item">
+            <div class="receita-header">
+                <div class="receita-info">
+                    <h4>${receita.descricao}</h4>
+                    <div class="receita-meta">
+                        <span><i class="fas fa-calendar"></i> ${formatarData(receita.data)}</span>
+                        <span><i class="fas fa-tag"></i> ${receita.categoria}</span>
+                        ${receita.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
+                    </div>
+                </div>
+                <div class="receita-valor">${formatarMoeda(receita.valor)}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Alternar abas
+function mostrarAba(aba) {
+    // Botões
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (aba === 'contas') {
+        document.querySelector('.tab-btn[onclick*="contas"]').classList.add('active');
+        document.querySelector('.contas-container').style.display = '';
+        document.querySelector('.filters').style.display = '';
+        document.getElementById('dashboard-stats').style.display = '';
+        document.getElementById('dashboard-tab').style.display = 'none';
+    } else {
+        document.querySelector('.tab-btn[onclick*="dashboard"]').classList.add('active');
+        document.querySelector('.contas-container').style.display = 'none';
+        document.querySelector('.filters').style.display = 'none';
+        document.getElementById('dashboard-stats').style.display = 'none';
+        document.getElementById('dashboard-tab').style.display = '';
+        atualizarResumoFinanceiro();
+        atualizarGraficos();
+    }
+}
+
+// Atualizar resumo financeiro
+function atualizarResumoFinanceiro() {
+    const totalCustos = contas.reduce((total, c) => total + (c.valor || 0), 0);
+    const totalReceitas = receitas.reduce((total, r) => total + (r.valor || 0), 0);
+    const saldo = totalReceitas - totalCustos;
+    if (document.getElementById('totalCustos'))
+        document.getElementById('totalCustos').textContent = formatarMoeda(totalCustos);
+    if (document.getElementById('totalReceitas'))
+        document.getElementById('totalReceitas').textContent = formatarMoeda(totalReceitas);
+    if (document.getElementById('saldo'))
+        document.getElementById('saldo').textContent = formatarMoeda(saldo);
+}
+
+// ================= GRÁFICOS =================
+let graficoPizza = null;
+let graficoBarras = null;
+
+function atualizarGraficos() {
+    // Custos por categoria
+    const categorias = {};
+    contas.forEach(conta => {
+        if (!conta.paga) { // Só contas não pagas
+            categorias[conta.categoria] = (categorias[conta.categoria] || 0) + (conta.valor || 0);
+        }
+    });
+    const labels = Object.keys(categorias);
+    const data = Object.values(categorias);
+    // Cores para as categorias
+    const cores = [
+        '#667eea', '#764ba2', '#f6ad55', '#e53e3e', '#38a169', '#3182ce', '#ecc94b', '#ed8936', '#319795', '#d53f8c'
+    ];
+    // Gráfico de Pizza
+    const ctxPizza = document.getElementById('graficoPizza').getContext('2d');
+    if (graficoPizza) graficoPizza.destroy();
+    graficoPizza = new Chart(ctxPizza, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: cores.slice(0, labels.length),
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+    // Gráfico de Barras
+    const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
+    if (graficoBarras) graficoBarras.destroy();
+    graficoBarras = new Chart(ctxBarras, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Custos por Categoria',
+                data: data,
+                backgroundColor: cores.slice(0, labels.length),
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+// Inicialização das receitas e dashboard
+window.addEventListener('DOMContentLoaded', function() {
+    carregarReceitas();
+    // Garantir que a aba inicial é 'contas'
+    mostrarAba('contas');
+}); 
