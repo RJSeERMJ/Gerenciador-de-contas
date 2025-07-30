@@ -27,7 +27,7 @@ const emailConfigs = {
         secure: false,
         auth: {
             user: 'jamarestudo@gmail.com', // E-mail que ENVIA as notificações
-            pass: process.env.EMAIL_PASSWORD || 'sua_senha_aqui'
+            pass: process.env.EMAIL_PASSWORD || 'mekz ihei gvuz fkgb'
         }
     }
 };
@@ -50,7 +50,7 @@ async function enviarEmail(destinatario, assunto, conteudo) {
             return false;
         }
         
-        const transporter = nodemailer.createTransporter(emailConfigs.gmail);
+        const transporter = nodemailer.createTransport(emailConfigs.gmail);
         
         console.log('🔍 Verificando conexão com Gmail...');
         // Verificar conexão
@@ -165,9 +165,32 @@ app.post('/api/enviar-email', async (req, res) => {
 
 // Rota para configurar e-mail
 app.post('/api/configurar-email', async (req, res) => {
+    console.log('📧 Rota /api/configurar-email chamada');
+    console.log('📨 Dados recebidos:', req.body);
+    
     const { email } = req.body;
     
+    if (!email) {
+        console.log('❌ E-mail não fornecido');
+        return res.status(400).json({ 
+            success: false, 
+            error: 'E-mail é obrigatório' 
+        });
+    }
+    
     try {
+        console.log('📧 Tentando configurar e-mail para:', email);
+        
+        // Verificar se a senha está configurada
+        if (!process.env.EMAIL_PASSWORD || process.env.EMAIL_PASSWORD === 'sua_senha_aqui') {
+            console.log('❌ Senha de e-mail não configurada no Vercel');
+            console.log('🔍 EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '***CONFIGURADA***' : '***NÃO CONFIGURADA***');
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Senha de e-mail não configurada no servidor. Configure a variável EMAIL_PASSWORD no Vercel.' 
+            });
+        }
+        
         // Enviar e-mail de teste para confirmar
         const assunto = 'Confirmação - Sistema Família Jamar';
         const conteudo = `
@@ -180,20 +203,25 @@ app.post('/api/configurar-email', async (req, res) => {
             <p>📱 Sistema Família Jamar</p>
         `;
         
+        console.log('📤 Enviando e-mail de confirmação...');
         const sucesso = await enviarEmail(email, assunto, conteudo);
         
         if (sucesso) {
+            console.log('✅ E-mail de confirmação enviado com sucesso');
             res.json({ 
                 success: true, 
                 message: 'E-mail configurado com sucesso! Verifique sua caixa de entrada.' 
             });
         } else {
+            console.log('❌ Falha ao enviar e-mail de confirmação');
             res.status(500).json({ 
                 success: false, 
                 error: 'Erro ao enviar e-mail de confirmação. Verifique a configuração do servidor.' 
             });
         }
     } catch (error) {
+        console.log('❌ Erro interno na rota configurar-email:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor: ' + error.message 
