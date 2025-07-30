@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Família Jamar - Login</title>
+    <title>Login - Família Jamar</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,12 +25,10 @@
         }
 
         .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
+            background: white;
             border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             padding: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.3);
             width: 100%;
             max-width: 400px;
             text-align: center;
@@ -41,133 +39,113 @@
         }
 
         .logo h1 {
-            color: #2d3748;
-            font-size: 2rem;
+            color: #333;
+            font-size: 28px;
             font-weight: 700;
             margin-bottom: 10px;
         }
 
         .logo p {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        .login-form {
-            text-align: left;
+            color: #666;
+            font-size: 14px;
+            opacity: 0.8;
         }
 
         .form-group {
             margin-bottom: 20px;
+            text-align: left;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #2d3748;
+            color: #333;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 14px;
         }
 
-        .form-group input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.8);
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .password-container {
+        .input-group {
             position: relative;
         }
 
-        .password-toggle {
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group i {
             position: absolute;
-            right: 12px;
+            right: 15px;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #718096;
+            color: #999;
             cursor: pointer;
-            font-size: 1.1rem;
             transition: color 0.3s ease;
         }
 
-        .password-toggle:hover {
+        .input-group i:hover {
             color: #667eea;
         }
 
-        .login-btn {
+        .btn-login {
             width: 100%;
-            padding: 14px;
+            padding: 15px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
+            border-radius: 12px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 10px;
         }
 
-        .login-btn:hover {
+        .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .login-btn:disabled {
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
         .error-message {
-            background: #fed7d7;
-            color: #c53030;
+            background: #fee;
+            color: #c33;
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
-            font-size: 0.9rem;
+            font-size: 14px;
             display: none;
         }
 
         .success-message {
-            background: #c6f6d5;
-            color: #2f855a;
+            background: #efe;
+            color: #3c3;
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
-            font-size: 0.9rem;
+            font-size: 14px;
             display: none;
-        }
-
-        .family-info {
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-
-        .family-info h3 {
-            color: #2d3748;
-            font-size: 1rem;
-            margin-bottom: 10px;
-        }
-
-        .family-info p {
-            color: #718096;
-            font-size: 0.85rem;
-            line-height: 1.5;
         }
 
         .loading {
@@ -184,13 +162,30 @@
             100% { transform: rotate(360deg); }
         }
 
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 480px) {
             .login-container {
                 padding: 30px 20px;
             }
             
             .logo h1 {
-                font-size: 1.5rem;
+                font-size: 24px;
             }
         }
     </style>
@@ -202,176 +197,184 @@
             <p>Sistema de Gerenciamento de Contas</p>
         </div>
 
-        <div id="errorMessage" class="error-message">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorText"></span>
+        <div class="error-message" id="errorMessage">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="errorText">Credenciais inválidas</span>
         </div>
 
-        <div id="successMessage" class="success-message">
+        <div class="success-message" id="successMessage">
             <i class="fas fa-check-circle"></i>
-            <span id="successText"></span>
+            <span id="successText">Login realizado com sucesso!</span>
         </div>
 
-        <form id="loginForm" class="login-form">
+        <form id="loginForm" onsubmit="fazerLogin(event)">
             <div class="form-group">
-                <label for="username">Usuário</label>
-                <input type="text" id="username" name="username" required 
-                       placeholder="Digite seu usuário">
+                <label for="username">Nome de Usuário</label>
+                <div class="input-group">
+                    <input type="text" id="username" name="username" placeholder="Digite seu nome de usuário" required>
+                    <i class="fas fa-user"></i>
+                </div>
             </div>
 
             <div class="form-group">
                 <label for="password">Senha</label>
-                <div class="password-container">
-                    <input type="password" id="password" name="password" required 
-                           placeholder="Digite sua senha">
-                    <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <i class="fas fa-eye"></i>
-                    </button>
+                <div class="input-group">
+                    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+                    <i class="fas fa-eye" onclick="togglePassword()"></i>
                 </div>
             </div>
 
-            <button type="submit" class="login-btn" id="loginBtn">
-                <span>Entrar</span>
-                <span class="loading">
+            <button type="submit" class="btn-login" id="loginBtn">
+                <span id="loginText">Entrar</span>
+                <span class="loading" id="loading">
                     <i class="fas fa-spinner"></i>
                 </span>
             </button>
         </form>
 
-        <div class="family-info">
-            <h3><i class="fas fa-users"></i> Acesso Restrito</h3>
-            <p>Este sistema é de uso exclusivo da Família Jamar. 
-               Apenas membros autorizados podem acessar o gerenciador de contas.</p>
+        <div class="footer">
+            <p>Desenvolvido para a <strong>Família Jamar</strong></p>
+            <p>Sistema seguro de gerenciamento de contas</p>
         </div>
     </div>
 
     <script>
-        // Credenciais da família (em produção, isso deveria estar no servidor)
-        const FAMILY_CREDENTIALS = {
+        // Credenciais válidas
+        const CREDENCIAIS_VALIDAS = {
             'jamar': 'familia2024',
             'admin': 'admin123',
             'teste': 'teste123'
         };
 
+        // Elementos do DOM
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginText = document.getElementById('loginText');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const errorText = document.getElementById('errorText');
+        const successText = document.getElementById('successText');
+
         // Verificar se já está logado
-        function checkLoginStatus() {
-            const isLoggedIn = localStorage.getItem('familiaJamarLoggedIn');
-            if (isLoggedIn === 'true') {
-                window.location.href = 'index.html';
+        function verificarLogin() {
+            const loginTime = localStorage.getItem('loginTime');
+            const username = localStorage.getItem('username');
+            
+            if (loginTime && username) {
+                const now = new Date().getTime();
+                const loginTimeStamp = parseInt(loginTime);
+                const hoursDiff = (now - loginTimeStamp) / (1000 * 60 * 60);
+                
+                // Sessão expira após 24 horas
+                if (hoursDiff < 24) {
+                    redirecionarParaSistema();
+                } else {
+                    // Limpar dados expirados
+                    localStorage.removeItem('loginTime');
+                    localStorage.removeItem('username');
+                }
             }
         }
 
-        // Alternar visibilidade da senha
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.querySelector('.password-toggle i');
+        // Fazer login
+        function fazerLogin(event) {
+            event.preventDefault();
             
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.className = 'fas fa-eye-slash';
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            
+            // Validar credenciais
+            if (CREDENCIAIS_VALIDAS[username] && CREDENCIAIS_VALIDAS[username] === password) {
+                // Login bem-sucedido
+                mostrarSucesso('Login realizado com sucesso!');
+                
+                // Salvar dados de login
+                localStorage.setItem('username', username);
+                localStorage.setItem('loginTime', new Date().getTime().toString());
+                
+                // Simular delay e redirecionar
+                setTimeout(() => {
+                    redirecionarParaSistema();
+                }, 1000);
+                
             } else {
-                passwordInput.type = 'password';
-                toggleBtn.className = 'fas fa-eye';
+                // Login falhou
+                mostrarErro('Nome de usuário ou senha incorretos');
+                passwordInput.value = '';
+                passwordInput.focus();
             }
         }
 
         // Mostrar mensagem de erro
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            errorText.textContent = message;
-            errorDiv.style.display = 'block';
+        function mostrarErro(mensagem) {
+            errorText.textContent = mensagem;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
             
             // Esconder após 5 segundos
             setTimeout(() => {
-                errorDiv.style.display = 'none';
+                errorMessage.style.display = 'none';
             }, 5000);
         }
 
         // Mostrar mensagem de sucesso
-        function showSuccess(message) {
-            const successDiv = document.getElementById('successMessage');
-            const successText = document.getElementById('successText');
-            successText.textContent = message;
-            successDiv.style.display = 'block';
-        }
-
-        // Processar login
-        function processLogin(event) {
-            event.preventDefault();
+        function mostrarSucesso(mensagem) {
+            successText.textContent = mensagem;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
             
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('loginBtn');
-            
-            // Validações básicas
-            if (!username || !password) {
-                showError('Por favor, preencha todos os campos.');
-                return;
-            }
-
-            // Mostrar loading
+            // Desabilitar botão
             loginBtn.disabled = true;
-            loginBtn.querySelector('span').textContent = 'Entrando...';
-            document.querySelector('.loading').style.display = 'inline-block';
-
-            // Simular delay de autenticação
-            setTimeout(() => {
-                // Verificar credenciais
-                if (FAMILY_CREDENTIALS[username] && FAMILY_CREDENTIALS[username] === password) {
-                    // Login bem-sucedido
-                    localStorage.setItem('familiaJamarLoggedIn', 'true');
-                    localStorage.setItem('familiaJamarUser', username);
-                    localStorage.setItem('familiaJamarLoginTime', new Date().toISOString());
-                    
-                    showSuccess('Login realizado com sucesso! Redirecionando...');
-                    
-                    // Redirecionar após 1 segundo
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 1000);
-                } else {
-                    // Login falhou
-                    showError('Usuário ou senha incorretos. Tente novamente.');
-                    
-                    // Limpar senha
-                    document.getElementById('password').value = '';
-                    document.getElementById('password').focus();
-                }
-
-                // Restaurar botão
-                loginBtn.disabled = false;
-                loginBtn.querySelector('span').textContent = 'Entrar';
-                document.querySelector('.loading').style.display = 'none';
-            }, 1000);
+            loginText.textContent = 'Entrando...';
+            loading.style.display = 'inline-block';
         }
 
-        // Configurar eventos
-        document.addEventListener('DOMContentLoaded', function() {
-            checkLoginStatus();
+        // Redirecionar para o sistema
+        function redirecionarParaSistema() {
+            window.location.href = 'index-wix.html';
+        }
+
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.querySelector('.input-group i');
             
-            // Focar no campo de usuário
-            document.getElementById('username').focus();
-            
-            // Configurar formulário
-            document.getElementById('loginForm').addEventListener('submit', processLogin);
-            
-            // Permitir login com Enter
-            document.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    processLogin(e);
-                }
-            });
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Atalho para preencher credenciais rapidamente (Ctrl + Shift + L)
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'L') {
+                usernameInput.value = 'jamar';
+                passwordInput.value = 'familia2024';
+                event.preventDefault();
+            }
         });
 
-        // Atalhos de teclado para desenvolvimento
-        document.addEventListener('keydown', function(e) {
-            // Ctrl + Shift + L - Preencher credenciais de teste
-            if (e.ctrlKey && e.shiftKey && e.key === 'L') {
-                document.getElementById('username').value = 'jamar';
-                document.getElementById('password').value = 'familia2024';
+        // Foco automático no campo de usuário
+        window.addEventListener('load', function() {
+            usernameInput.focus();
+            verificarLogin();
+        });
+
+        // Login com Enter
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                fazerLogin(event);
             }
         });
     </script>
 </body>
+</html> 
 </html> 
