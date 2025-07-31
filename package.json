@@ -1,7 +1,7 @@
 {
-  "name": "familia-jamar-sistema",
+  "name": "familia-jamar-sistema-online",
   "version": "1.0.0",
-  "description": "Sistema de gerenciamento de contas da Família Jamar",
+  "description": "Sistema de gerenciamento de contas da Família Jamar - Versão Online",
   "main": "server-web.js",
   "scripts": {
     "start": "node server-web.js",
@@ -14,13 +14,13 @@
     "moment": "^2.29.4",
     "nodemailer": "^6.9.1",
     "node-cron": "^3.0.2",
-    "fs-extra": "^11.1.1",
-    "mongodb": "^5.7.0"
+    "@supabase/supabase-js": "^2.53.0",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
   },
-  "keywords": ["contas", "finanças", "família"],
+  "keywords": ["contas", "finanças", "família", "online", "supabase"],
   "author": "Família Jamar",
   "license": "MIT"
 }
