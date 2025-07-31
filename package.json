@@ -1,30 +1,26 @@
 {
-  "name": "gerenciador-contas",
+  "name": "familia-jamar-sistema",
   "version": "1.0.0",
-  "description": "Gerenciador de contas do mês com notificações por e-mail",
+  "description": "Sistema de gerenciamento de contas da Família Jamar",
   "main": "server-web.js",
   "scripts": {
     "start": "node server-web.js",
-    "dev": "nodemon server-web.js",
-    "build": "echo 'Build completed'"
+    "dev": "nodemon server-web.js"
   },
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "fs-extra": "^11.1.1",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
     "moment": "^2.29.4",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^7.0.5"
+    "nodemailer": "^6.9.1",
+    "node-cron": "^3.0.2",
+    "fs-extra": "^11.1.1",
+    "mongodb": "^5.7.0"
   },
-  "keywords": [
-    "contas",
-    "finanças",
-    "notificações",
-    "e-mail",
-    "web"
-  ],
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "keywords": ["contas", "finanças", "família"],
   "author": "Família Jamar",
   "license": "MIT"
 }

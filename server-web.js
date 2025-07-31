@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const moment = require('moment');
 const nodemailer = require('nodemailer');
-const fs = require('fs-extra');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,20 +16,122 @@ app.use(bodyParser.json());
 // Servir arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Sistema de persistência de dados
-const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
+// Configuração do MongoDB
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'familia-jamar';
+const COLLECTION_NAME = 'contas';
+
+let db = null;
 let contas = [];
 let nextId = 1;
 
-// Função para carregar dados do arquivo
+// Função para conectar ao MongoDB
+async function conectarMongoDB() {
+    try {
+        console.log('🔄 Conectando ao MongoDB...');
+        const client = new MongoClient(MONGODB_URI);
+        await client.connect();
+        db = client.db(DB_NAME);
+        console.log('✅ Conectado ao MongoDB com sucesso');
+        
+        // Carregar dados iniciais
+        await carregarDados();
+    } catch (error) {
+        console.log('❌ Erro ao conectar ao MongoDB:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
+        
+        // Fallback para arquivo local se MongoDB não estiver disponível
+        console.log('🔄 Usando fallback para arquivo local...');
+        await carregarDadosFallback();
+    }
+}
+
+// Função para carregar dados do MongoDB
 async function carregarDados() {
     try {
-        console.log('🔄 Iniciando carregamento de dados...');
-        console.log('📁 Caminho do arquivo:', DATA_FILE);
+        console.log('🔄 Carregando dados do MongoDB...');
+        
+        if (!db) {
+            console.log('❌ Conexão com MongoDB não disponível');
+            return;
+        }
+        
+        const collection = db.collection(COLLECTION_NAME);
+        
+        // Buscar todas as contas
+        const contasDB = await collection.find({}).toArray();
+        contas = contasDB;
+        
+        // Buscar o próximo ID
+        const configCollection = db.collection('config');
+        const config = await configCollection.findOne({ _id: 'nextId' });
+        nextId = config ? config.value : 1;
+        
+        console.log('✅ Dados carregados do MongoDB:', contas.length, 'contas');
+        console.log('🆔 Próximo ID:', nextId);
+        
+        // Log detalhado das contas
+        if (contas.length > 0) {
+            console.log('📋 Detalhes das contas:');
+            contas.forEach((conta, index) => {
+                console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+            });
+        }
+        
+    } catch (error) {
+        console.log('❌ Erro ao carregar dados do MongoDB:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
+        contas = [];
+        nextId = 1;
+    }
+}
+
+// Função para salvar dados no MongoDB
+async function salvarDados() {
+    try {
+        console.log('💾 Salvando dados no MongoDB...');
+        console.log('📊 Total de contas para salvar:', contas.length);
+        console.log('🆔 Próximo ID:', nextId);
+        
+        if (!db) {
+            console.log('❌ Conexão com MongoDB não disponível');
+            return;
+        }
+        
+        const collection = db.collection(COLLECTION_NAME);
+        const configCollection = db.collection('config');
+        
+        // Limpar coleção e inserir todas as contas
+        await collection.deleteMany({});
+        if (contas.length > 0) {
+            await collection.insertMany(contas);
+        }
+        
+        // Atualizar próximo ID
+        await configCollection.updateOne(
+            { _id: 'nextId' },
+            { $set: { value: nextId } },
+            { upsert: true }
+        );
+        
+        console.log('✅ Dados salvos no MongoDB com sucesso');
+        console.log('📅 Última atualização:', new Date().toISOString());
+        
+    } catch (error) {
+        console.log('❌ Erro ao salvar dados no MongoDB:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
+    }
+}
+
+// Função fallback para carregar dados de arquivo local
+async function carregarDadosFallback() {
+    try {
+        console.log('🔄 Carregando dados do arquivo local (fallback)...');
+        const fs = require('fs-extra');
+        const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
         
         // Criar pasta database se não existir
         await fs.ensureDir(path.dirname(DATA_FILE));
-        console.log('✅ Pasta database verificada/criada');
         
         // Verificar se o arquivo existe
         if (await fs.pathExists(DATA_FILE)) {
@@ -37,62 +139,21 @@ async function carregarDados() {
             const dados = await fs.readJson(DATA_FILE);
             contas = dados.contas || [];
             nextId = dados.nextId || 1;
-            console.log('✅ Dados carregados com sucesso:', contas.length, 'contas');
-            console.log('🆔 Próximo ID:', nextId);
-            
-            // Log detalhado das contas
-            if (contas.length > 0) {
-                console.log('📋 Detalhes das contas:');
-                contas.forEach((conta, index) => {
-                    console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
-                });
-            }
+            console.log('✅ Dados carregados do arquivo:', contas.length, 'contas');
         } else {
             console.log('📁 Arquivo de dados não encontrado, iniciando com dados vazios');
             contas = [];
             nextId = 1;
         }
     } catch (error) {
-        console.log('❌ Erro ao carregar dados:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
+        console.log('❌ Erro ao carregar dados do arquivo:', error.message);
         contas = [];
         nextId = 1;
     }
 }
 
-// Função para salvar dados no arquivo
-async function salvarDados() {
-    try {
-        console.log('💾 Iniciando salvamento de dados...');
-        console.log('📁 Caminho do arquivo:', DATA_FILE);
-        console.log('📊 Total de contas para salvar:', contas.length);
-        console.log('🆔 Próximo ID:', nextId);
-        
-        await fs.ensureDir(path.dirname(DATA_FILE));
-        console.log('✅ Pasta database verificada');
-        
-        const dadosParaSalvar = {
-            contas: contas,
-            nextId: nextId,
-            ultimaAtualizacao: new Date().toISOString()
-        };
-        
-        await fs.writeJson(DATA_FILE, dadosParaSalvar, { spaces: 2 });
-        console.log('✅ Dados salvos com sucesso');
-        console.log('📅 Última atualização:', dadosParaSalvar.ultimaAtualizacao);
-        
-        // Verificar se o arquivo foi salvo corretamente
-        const dadosVerificacao = await fs.readJson(DATA_FILE);
-        console.log('🔍 Verificação: arquivo contém', dadosVerificacao.contas.length, 'contas');
-        
-    } catch (error) {
-        console.log('❌ Erro ao salvar dados:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
-    }
-}
-
-// Carregar dados ao iniciar o servidor
-carregarDados();
+// Conectar ao MongoDB ao iniciar o servidor
+conectarMongoDB();
 
 // Configurações de e-mail
 const emailConfigs = {
