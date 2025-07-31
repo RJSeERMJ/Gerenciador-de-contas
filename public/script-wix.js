@@ -228,7 +228,7 @@ function atualizarGraficos() {
     // Cores para o gráfico
     const cores = [
         '#e53e3e', '#f56565', '#fc8181', '#fed7d7', // Vermelhos para contas
-        '#38a169', '#48bb78', '#68d391', '#9ae6b4'  // Verdes para receitas
+                    '#3182ce', '#4299e1', '#63b3ed', '#90cdf4'  // Azuis para receitas
     ];
     
     // Função para desenhar gráfico de pizza
@@ -342,7 +342,7 @@ function atualizarGraficos() {
     
     // Criar HTML simplificado para os gráficos
     const legendaContas = criarLegenda(categoriasContas, '#e53e3e');
-    const legendaReceitas = criarLegenda(categoriasReceitas, '#38a169');
+            const legendaReceitas = criarLegenda(categoriasReceitas, '#3182ce');
     
     graficoCategoria.innerHTML = `
         <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
@@ -357,7 +357,7 @@ function atualizarGraficos() {
             
             <!-- Gráfico de Receitas -->
             <div style="text-align: center; min-width: 280px;">
-                <h4 style="color: #38a169; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h4>
+                                    <h4 style="color: #3182ce; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h4>
                 <canvas id="graficoPizzaReceitas" width="250" height="250" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; margin-bottom: 15px;"></canvas>
                 <div style="max-width: 250px; margin: 0 auto;">
                     ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma receita cadastrada</p>'}
@@ -374,9 +374,9 @@ function atualizarGraficos() {
         if (canvasContas) {
             desenharGraficoPizza(canvasContas, categoriasContas, 'Contas', '#e53e3e');
         }
-        if (canvasReceitas) {
-            desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#38a169');
-        }
+                        if (canvasReceitas) {
+                    desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#3182ce');
+                }
     }, 100);
 }
 
@@ -488,7 +488,7 @@ function criarCardConta(conta) {
                 <div class="conta-header">
                     <div class="conta-info">
                         <h3>
-                            <i class="${tipoIcon}" style="color: ${isReceita ? '#38a169' : '#e53e3e'}; margin-right: 8px;"></i>
+                            <i class="${tipoIcon}" style="color: ${isReceita ? '#3182ce' : '#e53e3e'}; margin-right: 8px;"></i>
                             ${conta.descricao}
                             <span class="tipo-badge">${tipoText}</span>
                         </h3>

@@ -130,7 +130,7 @@ body::before {
 }
 
 .btn-success {
-    background: #38a169;
+            background: #3182ce;
     color: white;
 }
 
@@ -235,7 +235,7 @@ body::before {
 }
 
 .stat-icon.total {
-    background: linear-gradient(135deg, #68d391 0%, #38a169 100%);
+    background: linear-gradient(135deg, #63b3ed 0%, #3182ce 100%);
 }
 
 .stat-icon.paid {
@@ -419,7 +419,7 @@ body::before {
 }
 
 .conta-item.paga {
-    border-left-color: #38a169;
+    border-left-color: #3182ce;
     background: #c6f6d5;
 }
 
