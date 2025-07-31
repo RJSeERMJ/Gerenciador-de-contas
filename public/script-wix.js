@@ -147,9 +147,8 @@ function atualizarDashboard() {
             'contasPendentes': contasPendentes.length,
             'contasVencidas': contasVencidas.length,
             'contasPagas': contasPagas.length,
-            'totalPendente': formatarMoeda(saldo), // Agora mostra o saldo (receita - despesa)
-            'totalReceitas': formatarMoeda(totalReceitas),
-            'saldo': formatarMoeda(saldo)
+            'totalPendente': formatarMoeda(saldo), // Saldo total (receita - despesa)
+            'totalReceitas': formatarMoeda(totalReceitas)
         };
         
         Object.entries(elementos).forEach(([id, valor]) => {
