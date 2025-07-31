@@ -4,70 +4,130 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const moment = require('moment');
 const nodemailer = require('nodemailer');
-const { MongoClient } = require('mongodb');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
+});
+
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
-app.use(bodyParser.json());
+app.use(cors({
+    origin: "*",
+    credentials: true
+}));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Servir arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração do MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'familia-jamar';
-const COLLECTION_NAME = 'contas';
+// Configuração do Supabase (gratuito)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://your-project.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
 
-let db = null;
+let supabase = null;
 let contas = [];
 let nextId = 1;
+let isConnected = false;
 
-// Função para conectar ao MongoDB
-async function conectarMongoDB() {
+// Função para conectar ao Supabase
+async function conectarSupabase() {
     try {
-        console.log('🔄 Conectando ao MongoDB...');
-        const client = new MongoClient(MONGODB_URI);
-        await client.connect();
-        db = client.db(DB_NAME);
-        console.log('✅ Conectado ao MongoDB com sucesso');
+        console.log('🔄 Conectando ao Supabase...');
+        console.log('🔗 URL:', SUPABASE_URL);
+        console.log('🔑 Key configurada:', SUPABASE_KEY !== 'your-anon-key' ? '✅ Sim' : '❌ Não');
         
-        // Carregar dados iniciais
-        await carregarDados();
-    } catch (error) {
-        console.log('❌ Erro ao conectar ao MongoDB:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
-        
-        // Fallback para arquivo local se MongoDB não estiver disponível
-        console.log('🔄 Usando fallback para arquivo local...');
-        await carregarDadosFallback();
-    }
-}
-
-// Função para carregar dados do MongoDB
-async function carregarDados() {
-    try {
-        console.log('🔄 Carregando dados do MongoDB...');
-        
-        if (!db) {
-            console.log('❌ Conexão com MongoDB não disponível');
+        if (SUPABASE_URL === 'https://your-project.supabase.co' || SUPABASE_KEY === 'your-anon-key') {
+            console.log('⚠️ Supabase não configurado, usando armazenamento local...');
+            await carregarDadosLocal();
             return;
         }
         
-        const collection = db.collection(COLLECTION_NAME);
+        supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: false
+            }
+        });
+        
+        // Testar conexão
+        const { data, error } = await supabase
+            .from('contas')
+            .select('count')
+            .limit(1);
+            
+        if (error) {
+            throw error;
+        }
+        
+        console.log('✅ Conectado ao Supabase com sucesso');
+        isConnected = true;
+        
+        // Carregar dados iniciais
+        await carregarDados();
+        
+        // Configurar listener para mudanças em tempo real
+        const subscription = supabase
+            .channel('contas_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'contas' }, (payload) => {
+                console.log('🔄 Mudança detectada no banco:', payload);
+                io.emit('contas_updated', { action: payload.eventType, data: payload.new || payload.old });
+            })
+            .subscribe();
+            
+    } catch (error) {
+        console.log('❌ Erro ao conectar ao Supabase:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
+        console.log('🔄 Usando armazenamento local...');
+        isConnected = false;
+        await carregarDadosLocal();
+    }
+}
+
+// Função para carregar dados do Supabase
+async function carregarDados() {
+    try {
+        console.log('🔄 Carregando dados do Supabase...');
+        
+        if (!supabase || !isConnected) {
+            console.log('❌ Conexão com Supabase não disponível');
+            return;
+        }
         
         // Buscar todas as contas
-        const contasDB = await collection.find({}).toArray();
-        contas = contasDB;
+        const { data: contasDB, error } = await supabase
+            .from('contas')
+            .select('*')
+            .order('id', { ascending: true });
+            
+        if (error) {
+            throw error;
+        }
+        
+        contas = contasDB || [];
         
         // Buscar o próximo ID
-        const configCollection = db.collection('config');
-        const config = await configCollection.findOne({ _id: 'nextId' });
-        nextId = config ? config.value : 1;
+        const { data: config } = await supabase
+            .from('config')
+            .select('value')
+            .eq('key', 'nextId')
+            .single();
+            
+        nextId = config ? config.value : (contas.length > 0 ? Math.max(...contas.map(c => c.id)) + 1 : 1);
         
-        console.log('✅ Dados carregados do MongoDB:', contas.length, 'contas');
+        console.log('✅ Dados carregados do Supabase:', contas.length, 'contas');
         console.log('🆔 Próximo ID:', nextId);
         
         // Log detalhado das contas
@@ -79,54 +139,47 @@ async function carregarDados() {
         }
         
     } catch (error) {
-        console.log('❌ Erro ao carregar dados do MongoDB:', error.message);
+        console.log('❌ Erro ao carregar dados do Supabase:', error.message);
         console.log('🔍 Stack trace:', error.stack);
         contas = [];
         nextId = 1;
     }
 }
 
-// Função para salvar dados no MongoDB
+// Função para salvar dados no Supabase
 async function salvarDados() {
     try {
-        console.log('💾 Salvando dados no MongoDB...');
+        console.log('💾 Salvando dados no Supabase...');
         console.log('📊 Total de contas para salvar:', contas.length);
         console.log('🆔 Próximo ID:', nextId);
         
-        if (!db) {
-            console.log('❌ Conexão com MongoDB não disponível');
+        if (!supabase || !isConnected) {
+            console.log('❌ Conexão com Supabase não disponível');
             return;
         }
         
-        const collection = db.collection(COLLECTION_NAME);
-        const configCollection = db.collection('config');
-        
-        // Limpar coleção e inserir todas as contas
-        await collection.deleteMany({});
-        if (contas.length > 0) {
-            await collection.insertMany(contas);
+        // Atualizar próximo ID
+        const { error } = await supabase
+            .from('config')
+            .upsert({ key: 'nextId', value: nextId });
+            
+        if (error) {
+            throw error;
         }
         
-        // Atualizar próximo ID
-        await configCollection.updateOne(
-            { _id: 'nextId' },
-            { $set: { value: nextId } },
-            { upsert: true }
-        );
-        
-        console.log('✅ Dados salvos no MongoDB com sucesso');
+        console.log('✅ Dados salvos no Supabase com sucesso');
         console.log('📅 Última atualização:', new Date().toISOString());
         
     } catch (error) {
-        console.log('❌ Erro ao salvar dados no MongoDB:', error.message);
+        console.log('❌ Erro ao salvar dados no Supabase:', error.message);
         console.log('🔍 Stack trace:', error.stack);
     }
 }
 
-// Função fallback para carregar dados de arquivo local
-async function carregarDadosFallback() {
+// Função para carregar dados de arquivo local (fallback)
+async function carregarDadosLocal() {
     try {
-        console.log('🔄 Carregando dados do arquivo local (fallback)...');
+        console.log('🔄 Carregando dados do arquivo local...');
         const fs = require('fs-extra');
         const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
         
@@ -152,8 +205,31 @@ async function carregarDadosFallback() {
     }
 }
 
-// Conectar ao MongoDB ao iniciar o servidor
-conectarMongoDB();
+// Função para salvar dados em arquivo local (fallback)
+async function salvarDadosLocal() {
+    try {
+        console.log('💾 Salvando dados no arquivo local...');
+        const fs = require('fs-extra');
+        const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
+        
+        await fs.ensureDir(path.dirname(DATA_FILE));
+        
+        const dadosParaSalvar = {
+            contas: contas,
+            nextId: nextId,
+            ultimaAtualizacao: new Date().toISOString()
+        };
+        
+        await fs.writeJson(DATA_FILE, dadosParaSalvar, { spaces: 2 });
+        console.log('✅ Dados salvos no arquivo local com sucesso');
+        
+    } catch (error) {
+        console.log('❌ Erro ao salvar dados no arquivo:', error.message);
+    }
+}
+
+// Conectar ao Supabase ao iniciar o servidor
+conectarSupabase();
 
 // Configurações de e-mail
 const emailConfigs = {
@@ -312,11 +388,54 @@ setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000);
 // Verificar contas a cada 2 horas (para teste mais frequente)
 setInterval(verificarContasVencendo, 2 * 60 * 60 * 1000);
 
+// WebSocket connections
+io.on('connection', (socket) => {
+    console.log('🔌 Cliente conectado:', socket.id);
+    console.log('📊 Total de clientes conectados:', io.engine.clientsCount);
+    
+    // Enviar dados atuais para o cliente
+    socket.emit('contas_loaded', contas);
+    console.log('📋 Dados enviados para cliente:', contas.length, 'contas');
+    
+    // Enviar status da conexão
+    socket.emit('connection_status', {
+        connected: isConnected,
+        database: isConnected ? 'Supabase' : 'Local',
+        totalContas: contas.length
+    });
+    
+    socket.on('disconnect', (reason) => {
+        console.log('🔌 Cliente desconectado:', socket.id, 'Razão:', reason);
+        console.log('📊 Total de clientes conectados:', io.engine.clientsCount);
+    });
+    
+    socket.on('error', (error) => {
+        console.log('❌ Erro no WebSocket:', socket.id, error);
+    });
+    
+    // Ping para manter conexão ativa
+    socket.on('ping', () => {
+        socket.emit('pong');
+    });
+});
+
+// Função para notificar todos os clientes
+function notificarClientes(evento, dados) {
+    try {
+        console.log(`📡 Notificando clientes: ${evento}`, dados);
+        io.emit(evento, dados);
+        console.log(`✅ Notificação enviada para ${io.engine.clientsCount} clientes`);
+    } catch (error) {
+        console.log('❌ Erro ao notificar clientes:', error.message);
+    }
+}
+
 // Rotas da API
 app.get('/api/contas', (req, res) => {
     console.log('📋 GET /api/contas - Solicitado');
     console.log('📊 Total de contas na memória:', contas.length);
     console.log('🕐 Timestamp da requisição:', new Date().toISOString());
+    console.log('🔗 Status da conexão:', isConnected ? 'Supabase' : 'Local');
     
     // Log detalhado das contas sendo enviadas
     if (contas.length > 0) {
@@ -326,7 +445,15 @@ app.get('/api/contas', (req, res) => {
         });
     }
     
-    res.json(contas);
+    res.json({
+        contas: contas,
+        status: {
+            connected: isConnected,
+            database: isConnected ? 'Supabase' : 'Local',
+            totalContas: contas.length,
+            timestamp: new Date().toISOString()
+        }
+    });
 });
 
 app.post('/api/contas', async (req, res) => {
@@ -334,11 +461,18 @@ app.post('/api/contas', async (req, res) => {
         console.log('➕ POST /api/contas - Nova conta sendo adicionada');
         console.log('📝 Dados recebidos:', req.body);
         console.log('🆔 Próximo ID a ser usado:', nextId);
+        console.log('🔗 Status da conexão:', isConnected ? 'Supabase' : 'Local');
+        
+        // Validação dos dados
+        if (!req.body.descricao || !req.body.valor || !req.body.dataVencimento) {
+            console.log('❌ Dados inválidos recebidos');
+            return res.status(400).json({ error: 'Dados obrigatórios não fornecidos' });
+        }
         
         const novaConta = {
             id: nextId++,
-            descricao: req.body.descricao,
-            valor: req.body.valor,
+            descricao: req.body.descricao.trim(),
+            valor: parseFloat(req.body.valor).toFixed(2),
             dataVencimento: req.body.dataVencimento,
             categoria: req.body.categoria || 'Outros',
             tipo: req.body.tipo || 'conta', // 'conta' ou 'receita'
@@ -349,72 +483,220 @@ app.post('/api/contas', async (req, res) => {
         
         console.log('📋 Nova conta criada:', novaConta);
         
+        // Adicionar à lista local
         contas.push(novaConta);
         console.log('📊 Total de contas após adicionar:', contas.length);
         
-        await salvarDados(); // Salvar dados após adicionar
-        console.log('✅ Conta salva no arquivo');
+        // Salvar no banco de dados
+        if (supabase && isConnected) {
+            console.log('💾 Salvando no Supabase...');
+            const { error } = await supabase
+                .from('contas')
+                .insert(novaConta);
+                
+            if (error) {
+                console.log('❌ Erro ao salvar no Supabase:', error);
+                throw error;
+            }
+            console.log('✅ Conta salva no Supabase');
+        } else {
+            console.log('💾 Salvando no arquivo local...');
+            await salvarDadosLocal();
+            console.log('✅ Conta salva no arquivo local');
+        }
         
-        res.json(novaConta);
+        // Atualizar próximo ID
+        await salvarDados();
+        
+        // Notificar todos os clientes via WebSocket
+        notificarClientes('conta_added', novaConta);
+        
+        console.log('✅ Conta salva e notificação enviada');
+        
+        res.json({
+            success: true,
+            conta: novaConta,
+            status: {
+                connected: isConnected,
+                database: isConnected ? 'Supabase' : 'Local',
+                totalContas: contas.length
+            }
+        });
     } catch (error) {
         console.log('❌ Erro ao adicionar conta:', error.message);
         console.log('🔍 Stack trace:', error.stack);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message 
+        });
     }
 });
 
 app.put('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        console.log('✏️ PUT /api/contas/:id - Editando conta ID:', id);
+        console.log('📝 Dados recebidos:', req.body);
+        
         const index = contas.findIndex(conta => conta.id === id);
         
         if (index !== -1) {
-            contas[index] = { ...contas[index], ...req.body };
-            await salvarDados(); // Salvar dados após editar
-            res.json(contas[index]);
+            const contaAtualizada = { ...contas[index], ...req.body };
+            contas[index] = contaAtualizada;
+            
+            console.log('📋 Conta atualizada:', contaAtualizada);
+            
+            // Salvar no banco de dados
+            if (supabase && isConnected) {
+                console.log('💾 Salvando no Supabase...');
+                const { error } = await supabase
+                    .from('contas')
+                    .update(req.body)
+                    .eq('id', id);
+                    
+                if (error) {
+                    throw error;
+                }
+                console.log('✅ Conta atualizada no Supabase');
+            } else {
+                console.log('💾 Salvando no arquivo local...');
+                await salvarDadosLocal();
+                console.log('✅ Conta atualizada no arquivo local');
+            }
+            
+            // Notificar todos os clientes via WebSocket
+            notificarClientes('conta_updated', contaAtualizada);
+            
+            res.json({
+                success: true,
+                conta: contaAtualizada,
+                status: {
+                    connected: isConnected,
+                    database: isConnected ? 'Supabase' : 'Local'
+                }
+            });
         } else {
+            console.log('❌ Conta não encontrada:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
         console.log('❌ Erro ao editar conta:', error.message);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message 
+        });
     }
 });
 
 app.delete('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        console.log('🗑️ DELETE /api/contas/:id - Deletando conta ID:', id);
+        
         const index = contas.findIndex(conta => conta.id === id);
         
         if (index !== -1) {
+            const contaRemovida = contas[index];
             contas.splice(index, 1);
-            await salvarDados(); // Salvar dados após deletar
-            res.json({ message: 'Conta deletada com sucesso' });
+            
+            console.log('📋 Conta removida:', contaRemovida);
+            console.log('📊 Total de contas após remoção:', contas.length);
+            
+            // Salvar no banco de dados
+            if (supabase && isConnected) {
+                console.log('💾 Removendo do Supabase...');
+                const { error } = await supabase
+                    .from('contas')
+                    .delete()
+                    .eq('id', id);
+                    
+                if (error) {
+                    throw error;
+                }
+                console.log('✅ Conta removida do Supabase');
+            } else {
+                console.log('💾 Salvando no arquivo local...');
+                await salvarDadosLocal();
+                console.log('✅ Conta removida do arquivo local');
+            }
+            
+            // Notificar todos os clientes via WebSocket
+            notificarClientes('conta_deleted', { id: id });
+            
+            res.json({ 
+                success: true,
+                message: 'Conta deletada com sucesso',
+                status: {
+                    connected: isConnected,
+                    database: isConnected ? 'Supabase' : 'Local',
+                    totalContas: contas.length
+                }
+            });
         } else {
+            console.log('❌ Conta não encontrada:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
         console.log('❌ Erro ao deletar conta:', error.message);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message 
+        });
     }
 });
 
 app.patch('/api/contas/:id/pagar', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        console.log('💳 PATCH /api/contas/:id/pagar - Marcando conta como paga ID:', id);
+        
         const conta = contas.find(c => c.id === id);
         
         if (conta) {
             conta.paga = true;
             conta.dataPagamento = new Date().toISOString();
-            await salvarDados(); // Salvar dados após marcar como paga
-            res.json(conta);
+            
+            console.log('📋 Conta marcada como paga:', conta);
+            
+            // Salvar no banco de dados
+            if (supabase && isConnected) {
+                console.log('💾 Salvando no Supabase...');
+                const { error } = await supabase
+                    .from('contas')
+                    .update({ paga: true, dataPagamento: conta.dataPagamento })
+                    .eq('id', id);
+                    
+                if (error) {
+                    throw error;
+                }
+                console.log('✅ Conta atualizada no Supabase');
+            } else {
+                console.log('💾 Salvando no arquivo local...');
+                await salvarDadosLocal();
+                console.log('✅ Conta atualizada no arquivo local');
+            }
+            
+            // Notificar todos os clientes via WebSocket
+            notificarClientes('conta_paid', conta);
+            
+            res.json({
+                success: true,
+                conta: conta,
+                status: {
+                    connected: isConnected,
+                    database: isConnected ? 'Supabase' : 'Local'
+                }
+            });
         } else {
+            console.log('❌ Conta não encontrada:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
         console.log('❌ Erro ao marcar conta como paga:', error.message);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message 
+        });
     }
 });
 
@@ -729,10 +1011,11 @@ app.get('/', (req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📱 Sistema Família Jamar online!`);
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
+    console.log(`🔌 WebSockets ativos para atualização automática`);
 });
 
 module.exports = app; 
