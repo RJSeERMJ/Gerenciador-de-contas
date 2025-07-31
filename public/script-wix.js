@@ -6,17 +6,22 @@ let contas = [];
 let emailConfigurado = null;
 
 // Inicialização
-document.addEventListener('DOMContentLoaded', function() {
-    carregarDados();
-    definirDataMinima();
-    atualizarDashboard();
-    renderizarContas();
-    configurarAtalhosTeclado();
-    
-    // Verificar se é primeira vez
-    if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
-        mostrarMensagem('Bem-vindo ao Família Jamar! Agora seus dados são salvos no servidor e podem ser acessados de qualquer computador.', 'info');
-        localStorage.setItem('familiaJamarPrimeiraVez', 'true');
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await carregarDados();
+        definirDataMinima();
+        atualizarDashboard();
+        renderizarContas();
+        configurarAtalhosTeclado();
+        
+        // Verificar se é primeira vez
+        if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
+            mostrarMensagem('Bem-vindo ao Família Jamar! Agora seus dados são salvos no servidor e podem ser acessados de qualquer computador.', 'info');
+            localStorage.setItem('familiaJamarPrimeiraVez', 'true');
+        }
+    } catch (error) {
+        console.error('❌ Erro na inicialização:', error);
+        mostrarMensagem('Erro ao carregar dados. Recarregue a página.', 'error');
     }
 });
 
@@ -104,6 +109,11 @@ function mostrarAba(aba) {
     if (aba === 'dashboard') {
         atualizarDashboard();
         atualizarGraficos();
+    }
+    
+    // Se for a aba contas, renderizar as contas
+    if (aba === 'contas') {
+        renderizarContas();
     }
 }
 
@@ -346,6 +356,9 @@ function atualizarGraficos() {
 
 function renderizarContas() {
     try {
+        console.log('🔄 Renderizando contas...');
+        console.log('📋 Total de contas:', contas.length);
+        
         const listaContas = document.getElementById('listaContas');
         if (!listaContas) {
             console.error('❌ Elemento #listaContas não encontrado');
@@ -355,6 +368,8 @@ function renderizarContas() {
         const filtroStatus = document.getElementById('filtroStatus')?.value || 'todas';
         const filtroCategoria = document.getElementById('filtroCategoria')?.value || '';
         const busca = document.getElementById('busca')?.value?.toLowerCase() || '';
+        
+        console.log('🔍 Filtros aplicados:', { filtroStatus, filtroCategoria, busca });
         
         let contasFiltradas = contas; // Mostrar todas as entradas (contas e receitas)
         
@@ -383,6 +398,8 @@ function renderizarContas() {
         
         // Ordenar por data de vencimento
         contasFiltradas.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+        
+        console.log('📊 Contas após filtros:', contasFiltradas.length);
         
         if (contasFiltradas.length === 0) {
             listaContas.innerHTML = `
@@ -785,7 +802,8 @@ async function salvarConfiguracaoEmail(event) {
         
         if (data.success) {
             emailConfigurado = { email };
-            salvarDados();
+            // Salvar configuração de e-mail no localStorage (mantido local)
+            localStorage.setItem('familiaJamarEmail', JSON.stringify(emailConfigurado));
             fecharModalConfigurarEmail();
             mostrarMensagem(data.message, 'success');
         } else {
@@ -838,11 +856,12 @@ function processarImportacao(event) {
                     emailConfigurado = dados.email;
                 }
                 
-                salvarDados();
+                // Nota: Importação agora é apenas local, não salva no servidor
+                // Para salvar no servidor, seria necessário enviar cada conta individualmente
                 atualizarDashboard();
                 renderizarContas();
                 
-                mostrarMensagem(`Importação realizada com sucesso! ${contas.length} contas importadas.`, 'success');
+                mostrarMensagem(`Importação realizada com sucesso! ${contas.length} contas importadas. (Nota: Dados apenas locais)`, 'success');
             } else {
                 mostrarMensagem('Arquivo inválido!', 'error');
             }
