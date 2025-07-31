@@ -340,7 +340,15 @@ function atualizarGraficos() {
         const total = Object.values(dados).reduce((sum, item) => sum + item.total, 0);
         const tipo = corBase === '#3182ce' ? 'receita' : 'conta';
         
-        return entries.map(([categoria, item], index) => {
+        // Cabeçalho com total geral
+        const cabecalhoTotal = `
+            <div style="background: ${corBase}; color: white; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; text-align: center; font-weight: 600; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 14px; margin-bottom: 2px;">Total Geral</div>
+                <div style="font-size: 16px;">${formatarMoeda(total)}</div>
+            </div>
+        `;
+        
+        const itensLegenda = entries.map(([categoria, item], index) => {
             const percentage = total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0';
             const corCategoria = obterCorCategoria(categoria, tipo);
             
@@ -358,6 +366,8 @@ function atualizarGraficos() {
                 </div>
             `;
         }).join('');
+        
+        return cabecalhoTotal + itensLegenda;
     }
     
     // Criar HTML simplificado para os gráficos
