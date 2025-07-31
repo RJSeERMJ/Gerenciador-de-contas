@@ -13,9 +13,50 @@ let connectionStatus = {
 const SERVER_URL = 'https://familiajamar.vercel.app';
 const WS_URL = 'wss://familiajamar.vercel.app';
 
+// Verificar login
+function verificarLogin() {
+    const loginTime = localStorage.getItem('loginTime');
+    const username = localStorage.getItem('username');
+    
+    if (!loginTime || !username) {
+        // Não logado, redirecionar para login
+        window.location.href = '/login';
+        return false;
+    }
+    
+    // Verificar se o login não expirou (24 horas)
+    const now = new Date().getTime();
+    const loginTimeStamp = parseInt(loginTime);
+    const hoursDiff = (now - loginTimeStamp) / (1000 * 60 * 60);
+    
+    if (hoursDiff > 24) {
+        // Login expirado
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('username');
+        window.location.href = '/login';
+        return false;
+    }
+    
+    return true;
+}
+
+// Função de logout
+function logout() {
+    if (confirm('Tem certeza que deseja sair?')) {
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('username');
+        window.location.href = '/login';
+    }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
     try {
+        // Verificar login primeiro
+        if (!verificarLogin()) {
+            return;
+        }
+        
         console.log('🚀 Inicializando Sistema Família Jamar - Versão Online');
         
         await carregarDados();

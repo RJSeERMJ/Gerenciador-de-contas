@@ -370,6 +370,10 @@ app.post('/api/login', (req, res) => {
 
 // Rotas estáticas
 app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/login.html');
+});
+
+app.get('/sistema', (req, res) => {
     res.sendFile(__dirname + '/public/index-wix.html');
 });
 
