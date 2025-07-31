@@ -190,14 +190,62 @@ function atualizarGraficos() {
         }
     });
     
-    // Cores para o gráfico
-    const coresContas = [
-        '#e53e3e', '#f56565', '#fc8181', '#fed7d7'  // Vermelhos para contas
+    // Paleta de cores dinâmicas para categorias
+    const paletaCores = [
+        '#e53e3e', // Vermelho
+        '#3182ce', // Azul
+        '#38a169', // Verde
+        '#d69e2e', // Amarelo
+        '#805ad5', // Roxo
+        '#dd6b20', // Laranja
+        '#319795', // Teal
+        '#e53e3e', // Rosa
+        '#2d3748', // Cinza escuro
+        '#4a5568', // Cinza médio
+        '#718096', // Cinza claro
+        '#a0aec0', // Cinza muito claro
+        '#f56565', // Vermelho claro
+        '#4299e1', // Azul claro
+        '#48bb78', // Verde claro
+        '#ed8936', // Laranja claro
+        '#9f7aea', // Roxo claro
+        '#38b2ac', // Teal claro
+        '#ed64a6', // Rosa claro
+        '#667eea'  // Índigo
     ];
     
-    const coresReceitas = [
-        '#3182ce', '#4299e1', '#63b3ed', '#90cdf4'  // Azuis para receitas
-    ];
+    // Função para gerar cor baseada na categoria
+    function obterCorCategoria(categoria, tipo) {
+        // Hash simples para gerar índice consistente baseado na categoria
+        let hash = 0;
+        for (let i = 0; i < categoria.length; i++) {
+            const char = categoria.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        
+        const index = Math.abs(hash) % paletaCores.length;
+        let cor = paletaCores[index];
+        
+        // Para receitas, usar tons mais claros da mesma cor
+        if (tipo === 'receita') {
+            // Converter para HSL e aumentar luminosidade
+            const hex = cor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            
+            // Aumentar luminosidade para receitas
+            const fatorClareamento = 0.3;
+            const rNovo = Math.min(255, r + (255 - r) * fatorClareamento);
+            const gNovo = Math.min(255, g + (255 - g) * fatorClareamento);
+            const bNovo = Math.min(255, b + (255 - b) * fatorClareamento);
+            
+            cor = `#${Math.round(rNovo).toString(16).padStart(2, '0')}${Math.round(gNovo).toString(16).padStart(2, '0')}${Math.round(bNovo).toString(16).padStart(2, '0')}`;
+        }
+        
+        return cor;
+    }
     
     // Função para desenhar gráfico de pizza
     function desenharGraficoPizza(canvas, dados, titulo, corBase) {
@@ -229,9 +277,6 @@ function atualizarGraficos() {
             return;
         }
         
-        // Escolher cores baseadas no tipo (receita = azul, conta = vermelho)
-        const cores = titulo === 'Receitas' ? coresReceitas : coresContas;
-        
         // Desenhar fatias do gráfico
         let currentAngle = 0;
         const entries = Object.entries(dados);
@@ -246,8 +291,9 @@ function atualizarGraficos() {
             ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
             ctx.closePath();
             
-            // Cor da fatia
-            const cor = cores[index % cores.length];
+            // Cor da fatia baseada na categoria
+            const tipo = titulo === 'Receitas' ? 'receita' : 'conta';
+            const cor = obterCorCategoria(categoria, tipo);
             ctx.fillStyle = cor;
             ctx.fill();
             
@@ -292,21 +338,21 @@ function atualizarGraficos() {
         if (entries.length === 0) return '';
         
         const total = Object.values(dados).reduce((sum, item) => sum + item.total, 0);
-        
-        // Escolher cores baseadas na cor base (azul para receitas, vermelho para contas)
-        const cores = corBase === '#3182ce' ? coresReceitas : coresContas;
+        const tipo = corBase === '#3182ce' ? 'receita' : 'conta';
         
         return entries.map(([categoria, item], index) => {
             const percentage = total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0';
+            const corCategoria = obterCorCategoria(categoria, tipo);
+            
             return `
                 <div style="display: flex; align-items: center; margin: 5px 0; font-size: 11px; padding: 6px; background: rgba(255,255,255,0.9); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="width: 10px; height: 10px; background: ${cores[index % cores.length]}; border-radius: 2px; margin-right: 8px;"></div>
+                    <div style="width: 10px; height: 10px; background: ${corCategoria}; border-radius: 2px; margin-right: 8px;"></div>
                     <div style="flex: 1;">
                         <div style="font-weight: bold; color: #2d3748; font-size: 11px;">${categoria}</div>
                         <div style="font-size: 9px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="color: ${corBase}; font-weight: bold; font-size: 12px;">${formatarMoeda(item.total)}</div>
+                        <div style="color: ${corCategoria}; font-weight: bold; font-size: 12px;">${formatarMoeda(item.total)}</div>
                         <div style="font-size: 9px; color: #718096;">${percentage}%</div>
                     </div>
                 </div>
