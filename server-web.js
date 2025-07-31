@@ -16,7 +16,7 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuração MongoDB Atlas
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://jamarestudo:A91L9XOUYiCaHetq@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true&w=majority&appName=Familiajamar';
 const DB_NAME = 'familia-jamar';
 const COLLECTION_NAME = 'contas';
 
