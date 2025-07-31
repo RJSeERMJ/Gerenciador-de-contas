@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const moment = require('moment');
 const nodemailer = require('nodemailer');
-const { MongoClient } = require('mongodb');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,120 +16,186 @@ app.use(bodyParser.json());
 // Servir arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração do MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'familia-jamar';
-const COLLECTION_NAME = 'contas';
+// Configuração do SQLite
+const DB_PATH = path.join(__dirname, 'database', 'contas.db');
 
 let db = null;
-let contas = [];
-let nextId = 1;
 
-// Função para conectar ao MongoDB
-async function conectarMongoDB() {
-    try {
-        console.log('🔄 Conectando ao MongoDB...');
-        const client = new MongoClient(MONGODB_URI);
-        await client.connect();
-        db = client.db(DB_NAME);
-        console.log('✅ Conectado ao MongoDB com sucesso');
+// Função para inicializar banco SQLite
+function inicializarBanco() {
+    return new Promise((resolve, reject) => {
+        console.log('🔄 Inicializando banco SQLite...');
         
-        // Carregar dados iniciais
-        await carregarDados();
-    } catch (error) {
-        console.log('❌ Erro ao conectar ao MongoDB:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
-        
-        // No Vercel, não podemos usar arquivo local, então inicializamos com dados vazios
-        console.log('🔄 Inicializando com dados vazios (Vercel)...');
-        contas = [];
-        nextId = 1;
-    }
-}
-
-// Função para carregar dados do MongoDB
-async function carregarDados() {
-    try {
-        console.log('🔄 Carregando dados do MongoDB...');
-        
-        if (!db) {
-            console.log('❌ Conexão com MongoDB não disponível');
-            contas = [];
-            nextId = 1;
-            return;
+        // Criar diretório se não existir
+        const dir = path.dirname(DB_PATH);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
         
-        const collection = db.collection(COLLECTION_NAME);
-        
-        // Buscar todas as contas
-        const contasDB = await collection.find({}).toArray();
-        contas = contasDB;
-        
-        // Buscar o próximo ID
-        const configCollection = db.collection('config');
-        const config = await configCollection.findOne({ _id: 'nextId' });
-        nextId = config ? config.value : 1;
-        
-        console.log('✅ Dados carregados do MongoDB:', contas.length, 'contas');
-        console.log('🆔 Próximo ID:', nextId);
-        
-        // Log detalhado das contas
-        if (contas.length > 0) {
-            console.log('📋 Detalhes das contas:');
-            contas.forEach((conta, index) => {
-                console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+        db = new sqlite3.Database(DB_PATH, (err) => {
+            if (err) {
+                console.log('❌ Erro ao conectar ao SQLite:', err.message);
+                reject(err);
+                return;
+            }
+            
+            console.log('✅ Conectado ao SQLite com sucesso');
+            
+            // Criar tabelas
+            db.run(`
+                CREATE TABLE IF NOT EXISTS contas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    descricao TEXT NOT NULL,
+                    valor REAL NOT NULL,
+                    dataVencimento TEXT NOT NULL,
+                    categoria TEXT DEFAULT 'Outros',
+                    tipo TEXT DEFAULT 'conta',
+                    recorrente BOOLEAN DEFAULT 0,
+                    paga BOOLEAN DEFAULT 0,
+                    dataPagamento TEXT,
+                    dataCriacao TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            `, (err) => {
+                if (err) {
+                    console.log('❌ Erro ao criar tabela contas:', err.message);
+                    reject(err);
+                    return;
+                }
+                
+                console.log('✅ Tabela contas criada/verificada');
+                resolve();
             });
-        }
-        
-    } catch (error) {
-        console.log('❌ Erro ao carregar dados do MongoDB:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
-        contas = [];
-        nextId = 1;
-    }
+        });
+    });
 }
 
-// Função para salvar dados no MongoDB
-async function salvarDados() {
-    try {
-        console.log('💾 Salvando dados no MongoDB...');
-        console.log('📊 Total de contas para salvar:', contas.length);
-        console.log('🆔 Próximo ID:', nextId);
+// Função para carregar contas do SQLite
+function carregarContas() {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT * FROM contas ORDER BY dataVencimento', (err, rows) => {
+            if (err) {
+                console.log('❌ Erro ao carregar contas:', err.message);
+                reject(err);
+                return;
+            }
+            
+            console.log('✅ Contas carregadas:', rows.length);
+            
+            // Log detalhado das contas
+            if (rows.length > 0) {
+                console.log('📋 Detalhes das contas:');
+                rows.forEach((conta, index) => {
+                    console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+                });
+            }
+            
+            resolve(rows);
+        });
+    });
+}
+
+// Função para adicionar conta no SQLite
+function adicionarConta(conta) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            INSERT INTO contas (descricao, valor, dataVencimento, categoria, tipo, recorrente, paga)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
         
-        if (!db) {
-            console.log('❌ Conexão com MongoDB não disponível');
-            return;
-        }
+        db.run(sql, [
+            conta.descricao,
+            conta.valor,
+            conta.dataVencimento,
+            conta.categoria || 'Outros',
+            conta.tipo || 'conta',
+            conta.recorrente ? 1 : 0,
+            conta.paga ? 1 : 0
+        ], function(err) {
+            if (err) {
+                console.log('❌ Erro ao adicionar conta:', err.message);
+                reject(err);
+                return;
+            }
+            
+            console.log('✅ Conta adicionada com ID:', this.lastID);
+            resolve({ ...conta, id: this.lastID });
+        });
+    });
+}
+
+// Função para atualizar conta no SQLite
+function atualizarConta(id, dados) {
+    return new Promise((resolve, reject) => {
+        const campos = Object.keys(dados).map(key => `${key} = ?`).join(', ');
+        const valores = Object.values(dados);
+        valores.push(id);
         
-        const collection = db.collection(COLLECTION_NAME);
-        const configCollection = db.collection('config');
+        const sql = `UPDATE contas SET ${campos} WHERE id = ?`;
         
-        // Limpar coleção e inserir todas as contas
-        await collection.deleteMany({});
-        if (contas.length > 0) {
-            await collection.insertMany(contas);
-        }
-        
-        // Atualizar próximo ID
-        await configCollection.updateOne(
-            { _id: 'nextId' },
-            { $set: { value: nextId } },
-            { upsert: true }
+        db.run(sql, valores, function(err) {
+            if (err) {
+                console.log('❌ Erro ao atualizar conta:', err.message);
+                reject(err);
+                return;
+            }
+            
+            console.log('✅ Conta atualizada');
+            resolve();
+        });
+    });
+}
+
+// Função para deletar conta no SQLite
+function deletarConta(id) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM contas WHERE id = ?', [id], function(err) {
+            if (err) {
+                console.log('❌ Erro ao deletar conta:', err.message);
+                reject(err);
+                return;
+            }
+            
+            console.log('✅ Conta deletada');
+            resolve();
+        });
+    });
+}
+
+// Função para marcar como paga no SQLite
+function marcarComoPaga(id) {
+    return new Promise((resolve, reject) => {
+        const dataPagamento = new Date().toISOString();
+        db.run(
+            'UPDATE contas SET paga = 1, dataPagamento = ? WHERE id = ?',
+            [dataPagamento, id],
+            function(err) {
+                if (err) {
+                    console.log('❌ Erro ao marcar como paga:', err.message);
+                    reject(err);
+                    return;
+                }
+                
+                console.log('✅ Conta marcada como paga');
+                resolve();
+            }
         );
-        
-        console.log('✅ Dados salvos no MongoDB com sucesso');
-        console.log('📅 Última atualização:', new Date().toISOString());
-        
-    } catch (error) {
-        console.log('❌ Erro ao salvar dados no MongoDB:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
-    }
+    });
 }
 
 
 
-// Conectar ao MongoDB ao iniciar o servidor
-conectarMongoDB();
+// Inicializar banco e iniciar servidor
+inicializarBanco()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor SQL rodando na porta ${PORT}`);
+            console.log(`📊 Banco de dados: ${DB_PATH}`);
+        });
+    })
+    .catch(error => {
+        console.log('❌ Erro ao inicializar banco:', error.message);
+        process.exit(1);
+    });
 
 // Configurações de e-mail
 const emailConfigs = {
@@ -216,18 +282,30 @@ async function verificarContasVencendo() {
     const proximos3Dias = new Date();
     proximos3Dias.setDate(hoje.getDate() + 3);
     
-    const contasVencendo = contas.filter(conta => {
-        if (conta.paga) return false;
-        
-        const dataVencimento = new Date(conta.dataVencimento);
-        return dataVencimento >= hoje && dataVencimento <= proximos3Dias;
+    // Consulta SQL para contas vencendo
+    const contasVencendo = await new Promise((resolve, reject) => {
+        db.all(`
+            SELECT * FROM contas 
+            WHERE paga = 0 
+            AND dataVencimento BETWEEN ? AND ?
+            ORDER BY dataVencimento
+        `, [hoje.toISOString().split('T')[0], proximos3Dias.toISOString().split('T')[0]], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
     });
     
-    const contasVencidas = contas.filter(conta => {
-        if (conta.paga) return false;
-        
-        const dataVencimento = new Date(conta.dataVencimento);
-        return dataVencimento < hoje;
+    // Consulta SQL para contas vencidas
+    const contasVencidas = await new Promise((resolve, reject) => {
+        db.all(`
+            SELECT * FROM contas 
+            WHERE paga = 0 
+            AND dataVencimento < ?
+            ORDER BY dataVencimento
+        `, [hoje.toISOString().split('T')[0]], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
     });
     
     // Verificar se já enviamos notificação hoje
@@ -244,7 +322,7 @@ async function verificarContasVencendo() {
             <br>
             <ul>
                 ${contasVencendo.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${conta.dataVencimento}</li>
                 `).join('')}
             </ul>
             <br>
@@ -267,7 +345,7 @@ async function verificarContasVencendo() {
             <br>
             <ul>
                 ${contasVencidas.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${conta.dataVencimento}</li>
                 `).join('')}
             </ul>
             <br>
@@ -289,54 +367,26 @@ setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000);
 setInterval(verificarContasVencendo, 2 * 60 * 60 * 1000);
 
 // Rotas da API
-app.get('/api/contas', (req, res) => {
-    console.log('📋 GET /api/contas - Solicitado');
-    console.log('📊 Total de contas na memória:', contas.length);
-    console.log('🕐 Timestamp da requisição:', new Date().toISOString());
-    console.log('🔍 Tipo da variável contas:', typeof contas);
-    console.log('🔍 Conteúdo da variável contas:', JSON.stringify(contas, null, 2));
-    
-    // Log detalhado das contas sendo enviadas
-    if (contas.length > 0) {
-        console.log('📋 Contas sendo enviadas:');
-        contas.forEach((conta, index) => {
-            console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
-        });
+app.get('/api/contas', async (req, res) => {
+    try {
+        console.log('📋 GET /api/contas - Solicitado');
+        const contas = await carregarContas();
+        res.json(contas);
+    } catch (error) {
+        console.log('❌ Erro ao buscar contas:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
     }
-    
-    res.json(contas);
 });
 
 app.post('/api/contas', async (req, res) => {
     try {
         console.log('➕ POST /api/contas - Nova conta sendo adicionada');
         console.log('📝 Dados recebidos:', req.body);
-        console.log('🆔 Próximo ID a ser usado:', nextId);
         
-        const novaConta = {
-            id: nextId++,
-            descricao: req.body.descricao,
-            valor: req.body.valor,
-            dataVencimento: req.body.dataVencimento,
-            categoria: req.body.categoria || 'Outros',
-            tipo: req.body.tipo || 'conta', // 'conta' ou 'receita'
-            recorrente: req.body.recorrente || false,
-            paga: false,
-            dataCriacao: new Date().toISOString()
-        };
-        
-        console.log('📋 Nova conta criada:', novaConta);
-        
-        contas.push(novaConta);
-        console.log('📊 Total de contas após adicionar:', contas.length);
-        
-        await salvarDados(); // Salvar dados após adicionar
-        console.log('✅ Conta salva no arquivo');
-        
+        const novaConta = await adicionarConta(req.body);
         res.json(novaConta);
     } catch (error) {
         console.log('❌ Erro ao adicionar conta:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -344,17 +394,10 @@ app.post('/api/contas', async (req, res) => {
 app.put('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const index = contas.findIndex(conta => conta.id === id);
-        
-        if (index !== -1) {
-            contas[index] = { ...contas[index], ...req.body };
-            await salvarDados(); // Salvar dados após editar
-            res.json(contas[index]);
-        } else {
-            res.status(404).json({ error: 'Conta não encontrada' });
-        }
+        await atualizarConta(id, req.body);
+        res.json({ success: true });
     } catch (error) {
-        console.log('❌ Erro ao editar conta:', error.message);
+        console.log('❌ Erro ao atualizar conta:', error.message);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -362,61 +405,24 @@ app.put('/api/contas/:id', async (req, res) => {
 app.delete('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const index = contas.findIndex(conta => conta.id === id);
-        
-        if (index !== -1) {
-            contas.splice(index, 1);
-            await salvarDados(); // Salvar dados após deletar
-            res.json({ message: 'Conta deletada com sucesso' });
-        } else {
-            res.status(404).json({ error: 'Conta não encontrada' });
-        }
+        await deletarConta(id);
+        res.json({ success: true });
     } catch (error) {
         console.log('❌ Erro ao deletar conta:', error.message);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
-app.patch('/api/contas/:id/pagar', async (req, res) => {
+app.post('/api/contas/:id/pagar', async (req, res) => {
     try {
-        console.log('💰 PATCH /api/contas/:id/pagar - Marcando conta como paga');
+        console.log('💰 POST /api/contas/:id/pagar - Marcando conta como paga');
         const id = parseInt(req.params.id);
         console.log('🆔 ID da conta:', id);
-        console.log('📊 Total de contas na memória:', contas.length);
         
-        const conta = contas.find(c => c.id === id);
-        console.log('🔍 Conta encontrada:', conta ? 'Sim' : 'Não');
-        
-        if (conta) {
-            console.log('📋 Conta antes da atualização:', {
-                id: conta.id,
-                descricao: conta.descricao,
-                paga: conta.paga,
-                dataPagamento: conta.dataPagamento
-            });
-            
-            conta.paga = true;
-            conta.dataPagamento = new Date().toISOString();
-            
-            console.log('✅ Conta após atualização:', {
-                id: conta.id,
-                descricao: conta.descricao,
-                paga: conta.paga,
-                dataPagamento: conta.dataPagamento
-            });
-            
-            console.log('💾 Salvando dados no servidor...');
-            await salvarDados(); // Salvar dados após marcar como paga
-            console.log('✅ Dados salvos com sucesso');
-            
-            res.json(conta);
-        } else {
-            console.log('❌ Conta não encontrada com ID:', id);
-            res.status(404).json({ error: 'Conta não encontrada' });
-        }
+        await marcarComoPaga(id);
+        res.json({ success: true });
     } catch (error) {
         console.log('❌ Erro ao marcar conta como paga:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -485,7 +491,14 @@ app.post('/api/configurar-email', async (req, res) => {
             emailConfigurado = email; // Atualiza a configuração do e-mail
             
             // Enviar relatório completo de todas as contas
-            if (contas.length > 0) {
+            const totalContas = await new Promise((resolve, reject) => {
+                db.get('SELECT COUNT(*) as total FROM contas', (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row.total);
+                });
+            });
+            
+            if (totalContas > 0) {
                 console.log('📊 Enviando relatório completo de contas...');
                 await enviarRelatorioCompleto(email);
             }
@@ -514,27 +527,47 @@ app.post('/api/configurar-email', async (req, res) => {
 // Função para enviar relatório completo de contas
 async function enviarRelatorioCompleto(email) {
     try {
-        const hoje = new Date();
+        const hoje = new Date().toISOString().split('T')[0];
         
-        // Separar contas por status
-        const contasPagas = contas.filter(conta => conta.paga);
-        const contasPendentes = contas.filter(conta => 
-            !conta.paga && new Date(conta.dataVencimento) >= hoje
-        );
-        const contasVencidas = contas.filter(conta => 
-            !conta.paga && new Date(conta.dataVencimento) < hoje
-        );
+        // Buscar estatísticas do banco
+        const stats = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN paga = 1 THEN 1 ELSE 0 END) as pagas,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento >= ? THEN 1 ELSE 0 END) as pendentes,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento < ? THEN 1 ELSE 0 END) as vencidas,
+                    SUM(CASE WHEN paga = 1 THEN valor ELSE 0 END) as totalPago,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento >= ? THEN valor ELSE 0 END) as totalPendente,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento < ? THEN valor ELSE 0 END) as totalVencido
+                FROM contas
+            `, [hoje, hoje, hoje, hoje], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
         
-        // Calcular totais
-        const totalPendente = contasPendentes.reduce((sum, conta) => 
-            sum + parseFloat(conta.valor), 0
-        );
-        const totalVencido = contasVencidas.reduce((sum, conta) => 
-            sum + parseFloat(conta.valor), 0
-        );
-        const totalPago = contasPagas.reduce((sum, conta) => 
-            sum + parseFloat(conta.valor), 0
-        );
+        // Buscar contas por categoria
+        const contasPagas = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM contas WHERE paga = 1 ORDER BY dataPagamento DESC', (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+        
+        const contasPendentes = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM contas WHERE paga = 0 AND dataVencimento >= ? ORDER BY dataVencimento', [hoje], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+        
+        const contasVencidas = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM contas WHERE paga = 0 AND dataVencimento < ? ORDER BY dataVencimento', [hoje], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
         
         const assunto = '📊 Relatório Completo - Sistema Família Jamar';
         const conteudo = `
@@ -544,18 +577,18 @@ async function enviarRelatorioCompleto(email) {
             
             <h3>📈 Resumo Geral</h3>
             <ul>
-                <li><strong>Total de contas:</strong> ${contas.length}</li>
-                <li><strong>Contas pagas:</strong> ${contasPagas.length}</li>
-                <li><strong>Contas pendentes:</strong> ${contasPendentes.length}</li>
-                <li><strong>Contas vencidas:</strong> ${contasVencidas.length}</li>
+                <li><strong>Total de contas:</strong> ${stats.total || 0}</li>
+                <li><strong>Contas pagas:</strong> ${stats.pagas || 0}</li>
+                <li><strong>Contas pendentes:</strong> ${stats.pendentes || 0}</li>
+                <li><strong>Contas vencidas:</strong> ${stats.vencidas || 0}</li>
             </ul>
             <br>
             
             <h3>💰 Valores</h3>
             <ul>
-                <li><strong>Total pago:</strong> R$ ${totalPago.toFixed(2)}</li>
-                <li><strong>Total pendente:</strong> R$ ${totalPendente.toFixed(2)}</li>
-                <li><strong>Total vencido:</strong> R$ ${totalVencido.toFixed(2)}</li>
+                <li><strong>Total pago:</strong> R$ ${(stats.totalPago || 0).toFixed(2)}</li>
+                <li><strong>Total pendente:</strong> R$ ${(stats.totalPendente || 0).toFixed(2)}</li>
+                <li><strong>Total vencido:</strong> R$ ${(stats.totalVencido || 0).toFixed(2)}</li>
             </ul>
             <br>
             
@@ -563,7 +596,7 @@ async function enviarRelatorioCompleto(email) {
             <h3>⏰ Contas Pendentes</h3>
             <ul>
                 ${contasPendentes.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')} - ${conta.categoria}</li>
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${conta.dataVencimento} - ${conta.categoria}</li>
                 `).join('')}
             </ul>
             <br>
@@ -573,7 +606,7 @@ async function enviarRelatorioCompleto(email) {
             <h3>🚨 Contas Vencidas</h3>
             <ul>
                 ${contasVencidas.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')} - ${conta.categoria}</li>
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${conta.dataVencimento} - ${conta.categoria}</li>
                 `).join('')}
             </ul>
             <br>
@@ -583,7 +616,7 @@ async function enviarRelatorioCompleto(email) {
             <h3>✅ Contas Pagas</h3>
             <ul>
                 ${contasPagas.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Paga em: ${conta.dataPagamento ? new Date(conta.dataPagamento).toLocaleDateString('pt-BR') : 'Data não registrada'} - ${conta.categoria}</li>
+                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Paga em: ${conta.dataPagamento || 'Data não registrada'} - ${conta.categoria}</li>
                 `).join('')}
             </ul>
             <br>
@@ -603,31 +636,38 @@ async function enviarRelatorioCompleto(email) {
 }
 
 // Rota para estatísticas
-app.get('/api/estatisticas', (req, res) => {
-    const hoje = new Date();
-    const contasVencidas = contas.filter(conta => 
-        !conta.paga && new Date(conta.dataVencimento) < hoje
-    );
-    const contasPendentes = contas.filter(conta => 
-        !conta.paga && new Date(conta.dataVencimento) >= hoje
-    );
-    const contasPagas = contas.filter(conta => conta.paga);
-    
-    const totalPendente = contasPendentes.reduce((sum, conta) => 
-        sum + parseFloat(conta.valor), 0
-    );
-    const totalVencido = contasVencidas.reduce((sum, conta) => 
-        sum + parseFloat(conta.valor), 0
-    );
-    
-    res.json({
-        total: contas.length,
-        pendentes: contasPendentes.length,
-        vencidas: contasVencidas.length,
-        pagas: contasPagas.length,
-        totalPendente: totalPendente.toFixed(2),
-        totalVencido: totalVencido.toFixed(2)
-    });
+app.get('/api/estatisticas', async (req, res) => {
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        const stats = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento >= ? THEN 1 ELSE 0 END) as pendentes,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento < ? THEN 1 ELSE 0 END) as vencidas,
+                    SUM(CASE WHEN paga = 1 THEN 1 ELSE 0 END) as pagas,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento >= ? THEN valor ELSE 0 END) as totalPendente,
+                    SUM(CASE WHEN paga = 0 AND dataVencimento < ? THEN valor ELSE 0 END) as totalVencido
+                FROM contas
+            `, [hoje, hoje, hoje, hoje], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+        
+        res.json({
+            total: stats.total || 0,
+            pendentes: stats.pendentes || 0,
+            vencidas: stats.vencidas || 0,
+            pagas: stats.pagas || 0,
+            totalPendente: (stats.totalPendente || 0).toFixed(2),
+            totalVencido: (stats.totalVencido || 0).toFixed(2)
+        });
+    } catch (error) {
+        console.log('❌ Erro ao buscar estatísticas:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
 });
 
 // Rota para testar notificações

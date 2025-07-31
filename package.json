@@ -14,7 +14,7 @@
     "moment": "^2.29.4",
     "nodemailer": "^6.9.1",
     "node-cron": "^3.0.2",
-    "mongodb": "^5.7.0"
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
