@@ -10,8 +10,8 @@ echo ========================================
 echo SUA STRING DE CONEXAO
 echo ========================================
 echo.
-echo 📋 String completa (pronta para usar):
-echo mongodb+srv://jamarestudo:Vx1Di4kf45522JIG@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true^&w=majority^&appName=Familiajamar
+       echo 📋 String completa (pronta para usar):
+       echo mongodb+srv://jamarestudo:A91L9XOUYiCaHetq@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true^&w=majority^&appName=Familiajamar
 echo.
 
 echo ========================================
@@ -53,7 +53,7 @@ echo 1. Acesse: https://vercel.com
 echo 2. Vá em Settings → Environment Variables
 echo 3. Adicione:
 echo    - Name: MONGODB_URI
-echo    - Value: mongodb+srv://jamarestudo:Vx1Di4kf45522JIG@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true^&w=majority^&appName=Familiajamar
+       echo    - Value: mongodb+srv://jamarestudo:A91L9XOUYiCaHetq@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true^&w=majority^&appName=Familiajamar
 echo    - Environment: Production, Preview, Development
 echo 4. Clique em Save
 echo.

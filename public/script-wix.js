@@ -824,7 +824,7 @@ async function marcarComoPaga(id) {
         console.log('📤 Enviando requisição para o servidor...');
         // Enviar para o servidor
         const response = await fetch(`/api/contas/${id}/pagar`, {
-            method: 'PATCH'
+            method: 'POST'
         });
         
         console.log('📡 Status da resposta:', response.status);

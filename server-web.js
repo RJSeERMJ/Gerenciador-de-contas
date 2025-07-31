@@ -397,8 +397,17 @@ app.post('/api/contas/:id/pagar', async (req, res) => {
             conta.paga = true;
             conta.dataPagamento = new Date().toISOString();
             await salvarDados();
-            res.json({ success: true });
+            
+            console.log('✅ Conta marcada como paga:', {
+                id: conta.id,
+                descricao: conta.descricao,
+                paga: conta.paga,
+                dataPagamento: conta.dataPagamento
+            });
+            
+            res.json(conta); // Retorna a conta atualizada
         } else {
+            console.log('❌ Conta não encontrada com ID:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
