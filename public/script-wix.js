@@ -204,7 +204,6 @@ function atualizarDashboard() {
 // Função para atualizar gráficos
 function atualizarGraficos() {
     const graficoCategoria = document.getElementById('graficoCategoria');
-    const graficoEvolucao = document.getElementById('graficoEvolucao');
     
     // Estatísticas por categoria (separando contas e receitas)
     const categoriasContas = {};
@@ -379,48 +378,6 @@ function atualizarGraficos() {
             desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#38a169');
         }
     }, 100);
-    
-    // Estatísticas de evolução (últimos 6 meses) - separando contas e receitas
-    const hoje = new Date();
-    const meses = [];
-    for (let i = 5; i >= 0; i--) {
-        const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        const contasMes = contas.filter(conta => {
-            const dataConta = new Date(conta.dataVencimento);
-            return dataConta.getMonth() === mes.getMonth() && 
-                   dataConta.getFullYear() === mes.getFullYear() &&
-                   conta.tipo === 'conta';
-        });
-        const receitasMes = contas.filter(conta => {
-            const dataConta = new Date(conta.dataVencimento);
-            return dataConta.getMonth() === mes.getMonth() && 
-                   dataConta.getFullYear() === mes.getFullYear() &&
-                   conta.tipo === 'receita';
-        });
-        
-        meses.push({
-            mes: mes.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-            contas: contasMes.length,
-            receitas: receitasMes.length,
-            totalContas: contasMes.reduce((total, conta) => total + (parseFloat(conta.valor) || 0), 0),
-            totalReceitas: receitasMes.reduce((total, conta) => total + (parseFloat(conta.valor) || 0), 0)
-        });
-    }
-    
-    const evolucaoHTML = meses.map(item => `
-        <div style="margin: 10px 0; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
-            <strong>${item.mes}</strong><br>
-            <span style="color: #e53e3e;">📊 Contas: ${item.contas} (${formatarMoeda(item.totalContas)})</span><br>
-            <span style="color: #38a169;">💰 Receitas: ${item.receitas} (${formatarMoeda(item.totalReceitas)})</span>
-        </div>
-    `).join('');
-    
-    graficoEvolucao.innerHTML = `
-        <div style="text-align: left;">
-            <h4 style="margin-bottom: 15px; color: #2d3748;">Evolução dos Últimos 6 Meses</h4>
-            ${evolucaoHTML}
-        </div>
-    `;
 }
 
 function renderizarContas() {
