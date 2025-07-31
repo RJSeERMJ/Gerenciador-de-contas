@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Família Jamar - Gerenciador de Contas Online</title>
+    <title>Família Jamar - Gerenciador de Contas</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
             font-style: italic;
         }
         
-        .online-notice {
+        .wix-notice {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 15px;
@@ -27,12 +27,12 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
-        .online-notice h3 {
+        .wix-notice h3 {
             margin: 0 0 10px 0;
             font-size: 18px;
         }
         
-        .online-notice p {
+        .wix-notice p {
             margin: 0;
             font-size: 14px;
             opacity: 0.9;
@@ -97,273 +97,280 @@
         
         /* Estilos para diferenciar contas e receitas */
         .conta-item.receita {
-            border-left: 4px solid #3182ce;
+                            border-left: 4px solid #3182ce;
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
         }
         
         .conta-item.conta {
             border-left: 4px solid #e53e3e;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
         }
         
-        /* Status de conexão */
-        .connection-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .tipo-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+            text-transform: uppercase;
         }
         
-        .status-connected {
-            background: #10b981;
+        .valor-positivo {
+            color: #3182ce;
+            font-weight: bold;
+        }
+        
+        .valor-negativo {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        
+        /* Estilos para o dashboard com receitas */
+        .dashboard-item.receitas {
+            background: linear-gradient(135deg, #3182ce 0%, #4299e1 100%);
             color: white;
         }
         
-        .status-disconnected {
-            background: #ef4444;
+        .dashboard-item.saldo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
         
-        .status-offline {
-            background: #f59e0b;
-            color: white;
+        /* Estilos para gráficos de pizza */
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .chart-placeholder {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
-    <!-- Status de conexão -->
-    <div class="connection-status">
-        <span id="connection-status" class="status-offline">🌐 Conectando...</span>
-    </div>
-
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-chart-pie"></i>
-                <h1>Família Jamar</h1>
-            </div>
-            <div class="user-info">
-                <span>Sistema Online</span>
-                <button class="btn-logout" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Aviso do sistema online -->
-    <div class="online-notice">
-        <h3>🌐 Sistema Online</h3>
-        <p>Seus dados são salvos na nuvem e sincronizados em tempo real entre todos os dispositivos.</p>
-    </div>
-
-    <!-- Container principal -->
     <div class="container">
-        <!-- Dashboard -->
-        <div id="dashboard" class="dashboard">
-            <div class="dashboard-header">
-                <h2>📊 Dashboard</h2>
-                <button class="btn btn-primary" onclick="abrirModalNovaConta()">
-                    <i class="fas fa-plus"></i> Nova Conta
-                </button>
-            </div>
-
-            <!-- Cards de resumo -->
-            <div class="cards-container">
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-file-invoice-dollar"></i>
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-home"></i> Família Jamar</h1>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="userDisplay">Olá, <span id="username"></span></span>
+                        <button class="btn btn-logout" onclick="fazerLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Sair
+                        </button>
                     </div>
-                    <div class="card-content">
-                        <h3>Total Pendente</h3>
-                        <p id="totalPendente">R$ 0,00</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3>Contas Pagas</h3>
-                        <p id="contasPagas">0</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3>Vencidas</h3>
-                        <p id="contasVencidas">0</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-wallet"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3>Saldo Total</h3>
-                        <p id="saldoTotal">R$ 0,00</p>
-                    </div>
+                    <button class="btn btn-secondary" onclick="configurarEmail()">
+                        <i class="fas fa-envelope"></i> Configurar E-mail
+                    </button>
+                    <button class="btn btn-primary" onclick="abrirModalNovaConta()">
+                        <i class="fas fa-plus"></i> Nova Conta
+                    </button>
                 </div>
             </div>
+        </header>
 
-            <!-- Gráficos -->
-            <div class="charts-container">
-                <div class="chart-section">
-                    <h3>📊 Distribuição por Categoria</h3>
-                    <div class="chart-container">
-                        <canvas id="graficoCategorias" width="300" height="300"></canvas>
-                        <div id="legendaCategorias" class="chart-legend"></div>
+
+
+        <!-- Navegação por Abas -->
+        <div class="tabs-navigation">
+            <button class="tab-btn active" onclick="mostrarAba('contas')">
+                <i class="fas fa-list"></i> Contas
+            </button>
+            <button class="tab-btn" onclick="mostrarAba('dashboard')">
+                <i class="fas fa-chart-bar"></i> Dashboard
+            </button>
+        </div>
+
+        <!-- Aba Contas -->
+        <div id="aba-contas" class="tab-content active">
+            <!-- Filtros -->
+            <div class="filters">
+                <div class="filter-group">
+                    <select id="filtroStatus" onchange="filtrarContas()">
+                        <option value="todas">Todas as Contas</option>
+                        <option value="pendentes">Pendentes</option>
+                        <option value="vencidas">Vencidas</option>
+                        <option value="pagas">Pagas</option>
+                    </select>
+                    <select id="filtroCategoria" onchange="filtrarContas()">
+                        <option value="">Todas as Categorias</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="busca" placeholder="Buscar contas..." onkeyup="filtrarContas()">
+                </div>
+            </div>
+
+            <!-- Lista de Contas -->
+            <div class="contas-container">
+                <div class="contas-header">
+                    <h2>Suas Contas</h2>
+                    <div class="contas-actions">
+                        <div class="export-import">
+                            <button class="btn btn-outline" onclick="exportarContas()">
+                                <i class="fas fa-download"></i> Exportar CSV
+                            </button>
+                            <button class="btn btn-outline" onclick="baixarModeloCSV()">
+                                <i class="fas fa-file-download"></i> Modelo
+                            </button>
+                            <button class="btn btn-outline" onclick="importarContas()">
+                                <i class="fas fa-upload"></i> Importar CSV
+                            </button>
+                            <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="processarImportacao(event)">
+                        </div>
                     </div>
                 </div>
-
-                <div class="chart-section">
-                    <h3>💰 Distribuição de Receitas</h3>
-                    <div class="chart-container">
-                        <canvas id="graficoReceitas" width="300" height="300"></canvas>
-                        <div id="legendaReceitas" class="chart-legend"></div>
-                    </div>
+                <div id="listaContas" class="contas-list">
+                    <!-- Contas serão carregadas aqui -->
                 </div>
             </div>
         </div>
 
-        <!-- Aba de Contas -->
-        <div id="contas" class="contas" style="display: none;">
-            <div class="contas-header">
-                <h2>📋 Contas</h2>
-                <div class="contas-actions">
-                    <button class="btn btn-secondary" onclick="exportarContas()">
-                        <i class="fas fa-download"></i> Exportar
-                    </button>
-                    <button class="btn btn-secondary" onclick="baixarModeloCSV()">
-                        <i class="fas fa-file-csv"></i> Modelo
-                    </button>
-                    <button class="btn btn-secondary" onclick="importarContas()">
-                        <i class="fas fa-upload"></i> Importar
-                    </button>
+        <!-- Aba Dashboard -->
+        <div id="aba-dashboard" class="tab-content">
+            <!-- Dashboard -->
+            <div class="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasPendentes">0</h3>
+                            <p>Contas Pendentes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon overdue">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasVencidas">0</h3>
+                            <p>Contas Vencidas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon paid">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contasPagas">0</h3>
+                            <p>Contas Pagas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon total">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalPendente">R$ 0,00</h3>
+                            <p>Saldo (Receita - Despesa)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card receitas">
+                        <div class="stat-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalReceitas">R$ 0,00</h3>
+                            <p>Total Receitas</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="filtros">
-                <select id="filtroCategoria" onchange="filtrarContas()">
-                    <option value="">Todas as categorias</option>
-                </select>
-                <select id="filtroStatus" onchange="filtrarContas()">
-                    <option value="">Todos os status</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="paga">Paga</option>
-                    <option value="vencida">Vencida</option>
-                </select>
-            </div>
+            <!-- Gráficos e Receitas -->
+            <div class="dashboard-charts">
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-pie"></i> Distribuição por Categoria</h3>
+                    <div id="graficoCategoria" class="chart-placeholder">
+                        <p>Gráfico de pizza mostrando distribuição de contas por categoria</p>
+                    </div>
+                </div>
+                
 
-            <div id="listaContas" class="contas-list">
-                <!-- Contas serão renderizadas aqui -->
-            </div>
-        </div>
-
-        <!-- Aba de Configurações -->
-        <div id="configuracoes" class="configuracoes" style="display: none;">
-            <h2>⚙️ Configurações</h2>
-            
-            <div class="config-section">
-                <h3>📧 Configuração de E-mail</h3>
-                <p>Configure seu e-mail para receber notificações de contas vencendo.</p>
-                <button class="btn btn-primary" onclick="configurarEmail()">
-                    <i class="fas fa-envelope"></i> Configurar E-mail
-                </button>
-            </div>
-
-            <div class="config-section">
-                <h3>📊 Atalhos de Teclado</h3>
-                <button class="btn btn-secondary" onclick="mostrarAtalhosTeclado()">
-                    <i class="fas fa-keyboard"></i> Ver Atalhos
-                </button>
             </div>
         </div>
     </div>
-
-    <!-- Navegação -->
-    <nav class="nav">
-        <button class="nav-item active" onclick="mostrarAba('dashboard')">
-            <i class="fas fa-chart-pie"></i>
-            <span>Dashboard</span>
-        </button>
-        <button class="nav-item" onclick="mostrarAba('contas')">
-            <i class="fas fa-file-invoice-dollar"></i>
-            <span>Contas</span>
-        </button>
-        <button class="nav-item" onclick="mostrarAba('configuracoes')">
-            <i class="fas fa-cog"></i>
-            <span>Configurações</span>
-        </button>
-    </nav>
 
     <!-- Modal Nova Conta -->
     <div id="modalNovaConta" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>➕ Nova Conta</h3>
-                <button class="close" onclick="fecharModalNovaConta()">&times;</button>
+                <h2><i class="fas fa-plus"></i> Nova Conta</h2>
+                <button class="close-btn" onclick="fecharModalNovaConta()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <form id="formNovaConta" onsubmit="salvarConta(event)">
                 <div class="form-group">
-                    <label for="descricao">Descrição *</label>
+                    <label for="descricao">Descrição</label>
                     <input type="text" id="descricao" name="descricao" required>
                 </div>
-                
                 <div class="form-group">
-                    <label for="valor">Valor *</label>
-                    <input type="number" id="valor" name="valor" step="0.01" min="0" required>
+                    <label for="valor">Valor (R$)</label>
+                    <input type="number" id="valor" name="valor" step="0.01" min="0" placeholder="0,00" required>
                 </div>
-                
                 <div class="form-group">
-                    <label for="dataVencimento">Data de Vencimento *</label>
+                    <label for="dataVencimento">Data de Vencimento</label>
                     <input type="date" id="dataVencimento" name="dataVencimento" required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="categoria">Categoria</label>
-                    <select id="categoria" name="categoria">
-                        <option value="Outros">Outros</option>
-                        <option value="Alimentação">Alimentação</option>
-                        <option value="Transporte">Transporte</option>
-                        <option value="Moradia">Moradia</option>
-                        <option value="Saúde">Saúde</option>
-                        <option value="Educação">Educação</option>
-                        <option value="Lazer">Lazer</option>
-                        <option value="Energia">Energia</option>
-                        <option value="Água">Água</option>
-                        <option value="Internet">Internet</option>
-                        <option value="Telefone">Telefone</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
+                <div class="form-row">
+                                    <div class="form-group">
                     <label for="tipo">Tipo</label>
-                    <select id="tipo" name="tipo">
+                    <select id="tipo" name="tipo" required onchange="atualizarCategorias()">
+                        <option value="">Selecione o tipo</option>
                         <option value="conta">Conta</option>
                         <option value="receita">Receita</option>
                     </select>
                 </div>
-                
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="recorrente" name="recorrente">
-                        Conta Recorrente
-                    </label>
+                    <label for="categoria">Categoria</label>
+                    <select id="categoria" name="categoria" required>
+                        <option value="">Selecione uma categoria</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
                 </div>
-                
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="recorrente" name="recorrente">
+                            <span class="checkmark"></span>
+                            Conta Recorrente
+                        </label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalNovaConta()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Conta</button>
                 </div>
             </form>
         </div>
@@ -373,125 +380,131 @@
     <div id="modalEditarConta" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>✏️ Editar Conta</h3>
-                <button class="close" onclick="fecharModalEditarConta()">&times;</button>
+                <h2><i class="fas fa-edit"></i> Editar Conta</h2>
+                <button class="close-btn" onclick="fecharModalEditarConta()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <form id="formEditarConta" onsubmit="atualizarConta(event)">
                 <input type="hidden" id="editId" name="id">
-                
                 <div class="form-group">
-                    <label for="editDescricao">Descrição *</label>
+                    <label for="editDescricao">Descrição</label>
                     <input type="text" id="editDescricao" name="descricao" required>
                 </div>
-                
                 <div class="form-group">
-                    <label for="editValor">Valor *</label>
-                    <input type="number" id="editValor" name="valor" step="0.01" min="0" required>
+                    <label for="editValor">Valor (R$)</label>
+                    <input type="number" id="editValor" name="valor" step="0.01" min="0" placeholder="0,00" required>
                 </div>
-                
                 <div class="form-group">
-                    <label for="editDataVencimento">Data de Vencimento *</label>
+                    <label for="editDataVencimento">Data de Vencimento</label>
                     <input type="date" id="editDataVencimento" name="dataVencimento" required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="editCategoria">Categoria</label>
-                    <select id="editCategoria" name="categoria">
-                        <option value="Outros">Outros</option>
-                        <option value="Alimentação">Alimentação</option>
-                        <option value="Transporte">Transporte</option>
-                        <option value="Moradia">Moradia</option>
-                        <option value="Saúde">Saúde</option>
-                        <option value="Educação">Educação</option>
-                        <option value="Lazer">Lazer</option>
-                        <option value="Energia">Energia</option>
-                        <option value="Água">Água</option>
-                        <option value="Internet">Internet</option>
-                        <option value="Telefone">Telefone</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
+                <div class="form-row">
+                                    <div class="form-group">
                     <label for="editTipo">Tipo</label>
-                    <select id="editTipo" name="tipo">
+                    <select id="editTipo" name="tipo" required onchange="atualizarCategoriasEdit()">
+                        <option value="">Selecione o tipo</option>
                         <option value="conta">Conta</option>
                         <option value="receita">Receita</option>
                     </select>
                 </div>
-                
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="editRecorrente" name="recorrente">
-                        Conta Recorrente
-                    </label>
+                    <label for="editCategoria">Categoria</label>
+                    <select id="editCategoria" name="categoria" required>
+                        <option value="">Selecione uma categoria</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
                 </div>
-                
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editRecorrente" name="recorrente">
+                            <span class="checkmark"></span>
+                            Conta Recorrente
+                        </label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalEditarConta()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Atualizar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar Conta</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Configurar Email -->
+    <!-- Modal Configurar E-mail -->
     <div id="modalConfigurarEmail" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📧 Configurar E-mail</h3>
-                <button class="close" onclick="fecharModalConfigurarEmail()">&times;</button>
+                <h2><i class="fas fa-envelope"></i> Configurar E-mail de Notificação</h2>
+                <button class="close-btn" onclick="fecharModalConfigurarEmail()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <form id="formConfigurarEmail" onsubmit="salvarConfiguracaoEmail(event)">
                 <div class="form-group">
-                    <label for="email">E-mail para notificações</label>
-                    <input type="email" id="email" name="email" required>
-                    <small class="form-help">Você receberá notificações sobre contas vencendo neste e-mail.</small>
+                    <label for="emailNotificacao">E-mail para receber notificações:</label>
+                    <input type="email" id="emailNotificacao" name="emailNotificacao" 
+                           placeholder="seu@email.com" required>
+                    <small class="form-help">
+                        Este e-mail receberá notificações automáticas quando contas estiverem próximas do vencimento.
+                    </small>
                 </div>
-                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalConfigurarEmail()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Configuração</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Atalhos -->
-    <div id="modalAtalhos" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>⌨️ Atalhos de Teclado</h3>
-                <button class="close" onclick="fecharTodosModais()">&times;</button>
-            </div>
-            <div class="atalhos-content">
-                <div class="atalho-item">
-                    <kbd>Ctrl + N</kbd>
-                    <span>Nova Conta</span>
-                </div>
-                <div class="atalho-item">
-                    <kbd>Ctrl + D</kbd>
-                    <span>Dashboard</span>
-                </div>
-                <div class="atalho-item">
-                    <kbd>Ctrl + C</kbd>
-                    <span>Contas</span>
-                </div>
-                <div class="atalho-item">
-                    <kbd>Ctrl + S</kbd>
-                    <span>Configurações</span>
-                </div>
-                <div class="atalho-item">
-                    <kbd>Esc</kbd>
-                    <span>Fechar Modal</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Input file oculto para importação -->
-    <input type="file" id="fileInput" accept=".csv" style="display: none;" onchange="processarImportacao(event)">
-
-    <!-- Scripts -->
     <script src="script-wix.js"></script>
+    <script>
+        // Verificação de login
+        function verificarLogin() {
+            const loginTime = localStorage.getItem('loginTime');
+            const username = localStorage.getItem('username');
+            
+            if (!loginTime || !username) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Verificar se o login não expirou (24 horas)
+            const now = new Date().getTime();
+            const loginTimeStamp = parseInt(loginTime);
+            const hoursDiff = (now - loginTimeStamp) / (1000 * 60 * 60);
+            
+            if (hoursDiff > 24) {
+                // Login expirado
+                localStorage.removeItem('loginTime');
+                localStorage.removeItem('username');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Mostrar informações do usuário
+            document.getElementById('username').textContent = username;
+        }
+        
+        // Função de logout
+        function fazerLogout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                localStorage.removeItem('loginTime');
+                localStorage.removeItem('username');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Verificar autenticação ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            verificarLogin();
+        });
+    </script>
 </body>
 </html> 

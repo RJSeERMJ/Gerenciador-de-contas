@@ -1,64 +1,13 @@
 // Sistema de Gerenciamento de Contas - Versão Online
-// Conecta apenas ao site hospedado no Vercel
+// Usa APIs do servidor para persistência de dados
 
 // Variáveis globais
 let contas = [];
 let emailConfigurado = null;
-let connectionStatus = {
-    websocket: 'disconnected',
-    database: 'offline'
-};
-
-// URL do servidor online
-const SERVER_URL = 'https://familiajamar.vercel.app';
-const WS_URL = 'wss://familiajamar.vercel.app';
-
-// Verificar login
-function verificarLogin() {
-    const loginTime = localStorage.getItem('loginTime');
-    const username = localStorage.getItem('username');
-    
-    if (!loginTime || !username) {
-        // Não logado, redirecionar para login
-        window.location.href = '/login';
-        return false;
-    }
-    
-    // Verificar se o login não expirou (24 horas)
-    const now = new Date().getTime();
-    const loginTimeStamp = parseInt(loginTime);
-    const hoursDiff = (now - loginTimeStamp) / (1000 * 60 * 60);
-    
-    if (hoursDiff > 24) {
-        // Login expirado
-        localStorage.removeItem('loginTime');
-        localStorage.removeItem('username');
-        window.location.href = '/login';
-        return false;
-    }
-    
-    return true;
-}
-
-// Função de logout
-function logout() {
-    if (confirm('Tem certeza que deseja sair?')) {
-        localStorage.removeItem('loginTime');
-        localStorage.removeItem('username');
-        window.location.href = '/login';
-    }
-}
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
     try {
-        // Verificar login primeiro
-        if (!verificarLogin()) {
-            return;
-        }
-        
-        console.log('🚀 Inicializando Sistema Família Jamar - Versão Online');
-        
         await carregarDados();
         definirDataMinima();
         atualizarDashboard();
@@ -67,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Verificar se é primeira vez
         if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
-            mostrarMensagem('Bem-vindo ao Família Jamar! Seus dados são salvos na nuvem e podem ser acessados de qualquer dispositivo.', 'info');
+            mostrarMensagem('Bem-vindo ao Família Jamar! Agora seus dados são salvos no servidor e podem ser acessados de qualquer computador.', 'info');
             localStorage.setItem('familiaJamarPrimeiraVez', 'true');
         }
     } catch (error) {
@@ -76,24 +25,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// Funções de comunicação com o servidor online
+// Funções de comunicação com o servidor
 async function carregarDados() {
     try {
-        console.log('🔄 Carregando dados do servidor online...');
-        console.log('🌐 URL do servidor:', SERVER_URL);
+        console.log('🔄 Carregando dados do servidor...');
         console.log('🕐 Timestamp da requisição:', new Date().toISOString());
         
-        // Carregar contas do servidor online
-        const response = await fetch(`${SERVER_URL}/api/contas`);
+        // Carregar contas do servidor
+        const response = await fetch('/api/contas');
         console.log('📡 Status da resposta:', response.status);
+        console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
         
         if (response.ok) {
-            const data = await response.json();
-            contas = data.contas || [];
-            connectionStatus.database = data.status?.database || 'offline';
-            
+            contas = await response.json();
             console.log('📋 Contas carregadas do servidor:', contas.length);
-            console.log('🔗 Status do banco:', connectionStatus.database);
             
             // Log detalhado das contas carregadas
             if (contas.length > 0) {
@@ -106,7 +51,6 @@ async function carregarDados() {
             console.error('❌ Erro ao carregar contas:', response.status);
             console.error('❌ Texto da resposta:', await response.text());
             contas = [];
-            connectionStatus.database = 'error';
         }
         
         // Carregar configuração de e-mail do localStorage (mantido local)
@@ -134,7 +78,6 @@ async function carregarDados() {
         console.error('❌ Erro ao carregar dados:', error);
         console.error('🔍 Stack trace:', error.stack);
         contas = [];
-        connectionStatus.database = 'error';
         emailConfigurado = null;
     }
 }
@@ -155,7 +98,6 @@ function definirDataMinima() {
             }
         });
         
-        console.log('📅 Data mínima definida:', hoje);
     } catch (error) {
         console.error('❌ Erro ao definir data mínima:', error);
     }
@@ -721,7 +663,7 @@ async function salvarConta(event) {
         };
         
         // Enviar para o servidor
-        const response = await fetch(`${SERVER_URL}/api/contas`, {
+        const response = await fetch('/api/contas', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -786,7 +728,7 @@ async function atualizarConta(event) {
         };
         
         // Enviar para o servidor
-        const response = await fetch(`${SERVER_URL}/api/contas/${id}`, {
+        const response = await fetch(`/api/contas/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -823,7 +765,7 @@ async function deletarConta(id) {
     
     try {
         // Enviar para o servidor
-        const response = await fetch(`${SERVER_URL}/api/contas/${id}`, {
+        const response = await fetch(`/api/contas/${id}`, {
             method: 'DELETE'
         });
         
@@ -867,7 +809,7 @@ async function marcarComoPaga(id) {
         }
         
         // Enviar para o servidor
-        const response = await fetch(`${SERVER_URL}/api/contas/${id}/pagar`, {
+        const response = await fetch(`/api/contas/${id}/pagar`, {
             method: 'PATCH'
         });
         
@@ -929,7 +871,7 @@ async function salvarConfiguracaoEmail(event) {
     
     try {
         // Enviar para o servidor
-        const response = await fetch(`${SERVER_URL}/api/configurar-email`, {
+        const response = await fetch('/api/configurar-email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1126,7 +1068,7 @@ async function importarContasParaServidor(novasContas) {
         
         for (const conta of novasContas) {
             try {
-                const response = await fetch(`${SERVER_URL}/api/contas`, {
+                const response = await fetch('/api/contas', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1173,7 +1115,7 @@ async function importarContasParaServidor(novasContas) {
 // Funções de notificação (agora usando servidor real)
 async function enviarEmailConfirmacao(email) {
     try {
-        const response = await fetch(`${SERVER_URL}/api/testar-email`, {
+        const response = await fetch('/api/testar-email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -1,125 +1,159 @@
-// Sistema de Login - Família Jamar
-// Versão Online
+// Função para formatar CPF
+function formatarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return cpf;
+}
 
-// URL do servidor
-const SERVER_URL = 'https://familiajamar.vercel.app';
-
-// Elementos do DOM
-const loginForm = document.getElementById('loginForm');
-const loginBtn = document.getElementById('loginBtn');
-const loginText = document.getElementById('loginText');
-const successText = document.getElementById('successText');
-const errorText = document.getElementById('errorText');
-
-// Verificar se já está logado
-function verificarLogin() {
-    const loginTime = localStorage.getItem('loginTime');
-    const username = localStorage.getItem('username');
+// Função para validar CPF
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
     
-    if (loginTime && username) {
-        const now = new Date().getTime();
-        const loginTimeStamp = parseInt(loginTime);
-        const hoursDiff = (now - loginTimeStamp) / (1000 * 60 * 60);
-        
-        if (hoursDiff < 24) {
-            // Login ainda válido, redirecionar para o sistema
-            window.location.href = '/sistema';
-            return;
-        } else {
-            // Login expirado
-            localStorage.removeItem('loginTime');
-            localStorage.removeItem('username');
-        }
+    if (cpf.length !== 11) return false;
+    
+    // Verificar se todos os dígitos são iguais
+    if (/^(\d)\1+$/.test(cpf)) return false;
+    
+    // Validar primeiro dígito verificador
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let resto = 11 - (soma % 11);
+    let digito1 = resto < 2 ? 0 : resto;
+    
+    // Validar segundo dígito verificador
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    resto = 11 - (soma % 11);
+    let digito2 = resto < 2 ? 0 : resto;
+    
+    return parseInt(cpf.charAt(9)) === digito1 && parseInt(cpf.charAt(10)) === digito2;
+}
+
+// Função para mostrar mensagem
+function mostrarMensagem(texto, tipo) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = texto;
+    messageDiv.className = `message ${tipo}`;
+    messageDiv.style.display = 'block';
+    
+    // Esconder mensagem após 5 segundos
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+// Função para mostrar/esconder loading
+function toggleLoading(mostrar) {
+    const loading = document.getElementById('loading');
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if (mostrar) {
+        loading.style.display = 'block';
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    } else {
+        loading.style.display = 'none';
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Solicitar Acesso';
     }
 }
 
-// Fazer login
-async function fazerLogin(event) {
-    event.preventDefault();
-    
-    const nome = document.getElementById('nome').value.trim();
-    const senha = document.getElementById('senha').value;
-    
-    if (!nome || !senha) {
-        mostrarErro('Por favor, preencha todos os campos.');
-        return;
-    }
-    
+// Função para validar e-mail
+function validarEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+// Função para enviar solicitação de acesso
+async function enviarSolicitacao(email, cpf) {
     try {
-        // Desabilitar botão
-        loginBtn.disabled = true;
-        loginText.textContent = 'Entrando...';
-        
-        // Fazer requisição para o servidor
-        const response = await fetch(`${SERVER_URL}/api/login`, {
+        const response = await fetch('/api/solicitar-acesso', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ nome, senha })
+            body: JSON.stringify({
+                email: email,
+                cpf: cpf
+            })
         });
-        
+
         const data = await response.json();
-        
-        if (data.success) {
-            // Login bem-sucedido
-            mostrarSucesso('Login realizado com sucesso!');
+
+        if (response.ok) {
+            mostrarMensagem('✅ Solicitação enviada com sucesso! Verifique seu e-mail para confirmar o acesso.', 'success');
             
-            // Salvar dados de login
-            localStorage.setItem('username', nome);
-            localStorage.setItem('loginTime', new Date().getTime().toString());
-            
-            // Redirecionar após 1 segundo
-            setTimeout(() => {
-                window.location.href = '/sistema';
-            }, 1000);
+            // Limpar formulário
+            document.getElementById('loginForm').reset();
         } else {
-            // Login falhou
-            mostrarErro(data.error || 'Credenciais inválidas.');
+            mostrarMensagem(`❌ Erro: ${data.error}`, 'error');
         }
     } catch (error) {
-        console.error('Erro no login:', error);
-        mostrarErro('Erro de conexão. Tente novamente.');
-    } finally {
-        // Reabilitar botão
-        loginBtn.disabled = false;
-        loginText.textContent = 'Entrar';
+        console.error('Erro ao enviar solicitação:', error);
+        mostrarMensagem('❌ Erro ao enviar solicitação. Tente novamente.', 'error');
     }
-}
-
-// Mostrar mensagem de sucesso
-function mostrarSucesso(mensagem) {
-    successText.textContent = mensagem;
-    successText.style.display = 'block';
-    errorText.style.display = 'none';
-    
-    setTimeout(() => {
-        successText.style.display = 'none';
-    }, 3000);
-}
-
-// Mostrar mensagem de erro
-function mostrarErro(mensagem) {
-    errorText.textContent = mensagem;
-    errorText.style.display = 'block';
-    successText.style.display = 'none';
-    
-    setTimeout(() => {
-        errorText.style.display = 'none';
-    }, 5000);
 }
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    verificarLogin();
-    
-    // Login com Enter
-    document.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            fazerLogin(e);
+    const cpfInput = document.getElementById('cpf');
+    const loginForm = document.getElementById('loginForm');
+
+    // Formatar CPF automaticamente
+    cpfInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            e.target.value = formatarCPF(value);
         }
     });
-});
 
-// Form submit
-loginForm.addEventListener('submit', fazerLogin); 
+    // Submeter formulário
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value.trim();
+        const cpf = document.getElementById('cpf').value.trim();
+
+        // Validações
+        if (!email) {
+            mostrarMensagem('❌ Por favor, informe seu e-mail.', 'error');
+            return;
+        }
+
+        if (!validarEmail(email)) {
+            mostrarMensagem('❌ Por favor, informe um e-mail válido.', 'error');
+            return;
+        }
+
+        if (!cpf) {
+            mostrarMensagem('❌ Por favor, informe seu CPF.', 'error');
+            return;
+        }
+
+        if (!validarCPF(cpf)) {
+            mostrarMensagem('❌ CPF inválido. Verifique os números informados.', 'error');
+            return;
+        }
+
+        // Verificar se é o CPF autorizado
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        if (cpfLimpo !== '15119236790') {
+            mostrarMensagem('❌ CPF não autorizado. Apenas o CPF 151.192.367-90 tem acesso ao sistema.', 'error');
+            return;
+        }
+
+        // Enviar solicitação
+        toggleLoading(true);
+        await enviarSolicitacao(email, cpf);
+        toggleLoading(false);
+    });
+
+    // Focar no primeiro campo
+    document.getElementById('email').focus();
+}); 
