@@ -182,7 +182,7 @@ function atualizarDashboard() {
             'contasPendentes': contasPendentes.length,
             'contasVencidas': contasVencidas.length,
             'contasPagas': contasPagas.length,
-            'totalPendente': formatarMoeda(totalDespesasPendentes),
+            'totalPendente': formatarMoeda(saldo), // Agora mostra o saldo (receita - despesa)
             'totalReceitas': formatarMoeda(totalReceitas),
             'saldo': formatarMoeda(saldo)
         };
@@ -226,9 +226,12 @@ function atualizarGraficos() {
     });
     
     // Cores para o gráfico
-    const cores = [
-        '#e53e3e', '#f56565', '#fc8181', '#fed7d7', // Vermelhos para contas
-                    '#3182ce', '#4299e1', '#63b3ed', '#90cdf4'  // Azuis para receitas
+    const coresContas = [
+        '#e53e3e', '#f56565', '#fc8181', '#fed7d7'  // Vermelhos para contas
+    ];
+    
+    const coresReceitas = [
+        '#3182ce', '#4299e1', '#63b3ed', '#90cdf4'  // Azuis para receitas
     ];
     
     // Função para desenhar gráfico de pizza
@@ -260,6 +263,9 @@ function atualizarGraficos() {
             ctx.fillText('Nenhum valor disponível', centerX, centerY);
             return;
         }
+        
+        // Escolher cores baseadas no tipo (receita = azul, conta = vermelho)
+        const cores = titulo === 'Receitas' ? coresReceitas : coresContas;
         
         // Desenhar fatias do gráfico
         let currentAngle = 0;
@@ -321,6 +327,9 @@ function atualizarGraficos() {
         if (entries.length === 0) return '';
         
         const total = Object.values(dados).reduce((sum, item) => sum + item.total, 0);
+        
+        // Escolher cores baseadas na cor base (azul para receitas, vermelho para contas)
+        const cores = corBase === '#3182ce' ? coresReceitas : coresContas;
         
         return entries.map(([categoria, item], index) => {
             const percentage = total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0';
