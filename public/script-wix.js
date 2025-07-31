@@ -345,15 +345,15 @@ function atualizarGraficos() {
             const corCategoria = obterCorCategoria(categoria, tipo);
             
             return `
-                <div style="display: flex; align-items: center; margin: 5px 0; font-size: 11px; padding: 6px; background: rgba(255,255,255,0.9); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="width: 10px; height: 10px; background: ${corCategoria}; border-radius: 2px; margin-right: 8px;"></div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; color: #2d3748; font-size: 11px;">${categoria}</div>
-                        <div style="font-size: 9px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
+                <div style="display: flex; align-items: center; margin: 3px 0; font-size: 10px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 3px; border-left: 3px solid ${corCategoria};">
+                    <div style="width: 8px; height: 8px; background: ${corCategoria}; border-radius: 50%; margin-right: 6px;"></div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: #2d3748; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${categoria}</div>
+                        <div style="font-size: 8px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="color: ${corCategoria}; font-weight: bold; font-size: 12px;">${formatarMoeda(item.total)}</div>
-                        <div style="font-size: 9px; color: #718096;">${percentage}%</div>
+                    <div style="text-align: right; margin-left: 4px;">
+                        <div style="color: ${corCategoria}; font-weight: 600; font-size: 10px;">${formatarMoeda(item.total)}</div>
+                        <div style="font-size: 8px; color: #718096;">${percentage}%</div>
                     </div>
                 </div>
             `;
@@ -365,22 +365,26 @@ function atualizarGraficos() {
             const legendaReceitas = criarLegenda(categoriasReceitas, '#3182ce');
     
     graficoCategoria.innerHTML = `
-        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+        <div style="display: flex; flex-wrap: wrap; gap: 30px; justify-content: center;">
             <!-- Gráfico de Contas -->
-            <div style="text-align: center; min-width: 280px;">
-                <h4 style="color: #e53e3e; margin-bottom: 15px; font-size: 16px;">📊 Contas (Despesas)</h4>
-                <canvas id="graficoPizzaContas" width="250" height="250" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; margin-bottom: 15px;"></canvas>
-                <div style="max-width: 250px; margin: 0 auto;">
-                    ${legendaContas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma conta cadastrada</p>'}
+            <div style="min-width: 400px;">
+                <h4 style="color: #e53e3e; margin-bottom: 15px; font-size: 16px; text-align: center;">📊 Contas (Despesas)</h4>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <canvas id="graficoPizzaContas" width="200" height="200" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; flex-shrink: 0;"></canvas>
+                    <div style="flex: 1; max-width: 180px;">
+                        ${legendaContas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma conta cadastrada</p>'}
+                    </div>
                 </div>
             </div>
             
             <!-- Gráfico de Receitas -->
-            <div style="text-align: center; min-width: 280px;">
-                                    <h4 style="color: #3182ce; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h4>
-                <canvas id="graficoPizzaReceitas" width="250" height="250" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; margin-bottom: 15px;"></canvas>
-                <div style="max-width: 250px; margin: 0 auto;">
-                    ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma receita cadastrada</p>'}
+            <div style="min-width: 400px;">
+                <h4 style="color: #3182ce; margin-bottom: 15px; font-size: 16px; text-align: center;">💰 Receitas</h4>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <canvas id="graficoPizzaReceitas" width="200" height="200" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; flex-shrink: 0;"></canvas>
+                    <div style="flex: 1; max-width: 180px;">
+                        ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma receita cadastrada</p>'}
+                    </div>
                 </div>
             </div>
         </div>
