@@ -24,15 +24,29 @@ let nextId = 1;
 // Função para carregar dados do arquivo
 async function carregarDados() {
     try {
+        console.log('🔄 Iniciando carregamento de dados...');
+        console.log('📁 Caminho do arquivo:', DATA_FILE);
+        
         // Criar pasta database se não existir
         await fs.ensureDir(path.dirname(DATA_FILE));
+        console.log('✅ Pasta database verificada/criada');
         
         // Verificar se o arquivo existe
         if (await fs.pathExists(DATA_FILE)) {
+            console.log('📄 Arquivo de dados encontrado, lendo...');
             const dados = await fs.readJson(DATA_FILE);
             contas = dados.contas || [];
             nextId = dados.nextId || 1;
             console.log('✅ Dados carregados com sucesso:', contas.length, 'contas');
+            console.log('🆔 Próximo ID:', nextId);
+            
+            // Log detalhado das contas
+            if (contas.length > 0) {
+                console.log('📋 Detalhes das contas:');
+                contas.forEach((conta, index) => {
+                    console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+                });
+            }
         } else {
             console.log('📁 Arquivo de dados não encontrado, iniciando com dados vazios');
             contas = [];
@@ -40,6 +54,7 @@ async function carregarDados() {
         }
     } catch (error) {
         console.log('❌ Erro ao carregar dados:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
         contas = [];
         nextId = 1;
     }
@@ -48,15 +63,31 @@ async function carregarDados() {
 // Função para salvar dados no arquivo
 async function salvarDados() {
     try {
+        console.log('💾 Iniciando salvamento de dados...');
+        console.log('📁 Caminho do arquivo:', DATA_FILE);
+        console.log('📊 Total de contas para salvar:', contas.length);
+        console.log('🆔 Próximo ID:', nextId);
+        
         await fs.ensureDir(path.dirname(DATA_FILE));
-        await fs.writeJson(DATA_FILE, {
+        console.log('✅ Pasta database verificada');
+        
+        const dadosParaSalvar = {
             contas: contas,
             nextId: nextId,
             ultimaAtualizacao: new Date().toISOString()
-        }, { spaces: 2 });
-        console.log('💾 Dados salvos com sucesso');
+        };
+        
+        await fs.writeJson(DATA_FILE, dadosParaSalvar, { spaces: 2 });
+        console.log('✅ Dados salvos com sucesso');
+        console.log('📅 Última atualização:', dadosParaSalvar.ultimaAtualizacao);
+        
+        // Verificar se o arquivo foi salvo corretamente
+        const dadosVerificacao = await fs.readJson(DATA_FILE);
+        console.log('🔍 Verificação: arquivo contém', dadosVerificacao.contas.length, 'contas');
+        
     } catch (error) {
         console.log('❌ Erro ao salvar dados:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
     }
 }
 
@@ -222,11 +253,27 @@ setInterval(verificarContasVencendo, 2 * 60 * 60 * 1000);
 
 // Rotas da API
 app.get('/api/contas', (req, res) => {
+    console.log('📋 GET /api/contas - Solicitado');
+    console.log('📊 Total de contas na memória:', contas.length);
+    console.log('🕐 Timestamp da requisição:', new Date().toISOString());
+    
+    // Log detalhado das contas sendo enviadas
+    if (contas.length > 0) {
+        console.log('📋 Contas sendo enviadas:');
+        contas.forEach((conta, index) => {
+            console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+        });
+    }
+    
     res.json(contas);
 });
 
 app.post('/api/contas', async (req, res) => {
     try {
+        console.log('➕ POST /api/contas - Nova conta sendo adicionada');
+        console.log('📝 Dados recebidos:', req.body);
+        console.log('🆔 Próximo ID a ser usado:', nextId);
+        
         const novaConta = {
             id: nextId++,
             descricao: req.body.descricao,
@@ -239,11 +286,18 @@ app.post('/api/contas', async (req, res) => {
             dataCriacao: new Date().toISOString()
         };
         
+        console.log('📋 Nova conta criada:', novaConta);
+        
         contas.push(novaConta);
+        console.log('📊 Total de contas após adicionar:', contas.length);
+        
         await salvarDados(); // Salvar dados após adicionar
+        console.log('✅ Conta salva no arquivo');
+        
         res.json(novaConta);
     } catch (error) {
         console.log('❌ Erro ao adicionar conta:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -610,7 +664,7 @@ app.post('/api/testar-email', async (req, res) => {
 
 // Rota principal - redirecionar para o sistema com login
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index-wix.html'));
 });
 
 // Iniciar servidor

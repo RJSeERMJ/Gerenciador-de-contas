@@ -29,14 +29,27 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function carregarDados() {
     try {
         console.log('🔄 Carregando dados do servidor...');
+        console.log('🕐 Timestamp da requisição:', new Date().toISOString());
         
         // Carregar contas do servidor
         const response = await fetch('/api/contas');
+        console.log('📡 Status da resposta:', response.status);
+        console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
+        
         if (response.ok) {
             contas = await response.json();
             console.log('📋 Contas carregadas do servidor:', contas.length);
+            
+            // Log detalhado das contas carregadas
+            if (contas.length > 0) {
+                console.log('📋 Detalhes das contas carregadas:');
+                contas.forEach((conta, index) => {
+                    console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+                });
+            }
         } else {
             console.error('❌ Erro ao carregar contas:', response.status);
+            console.error('❌ Texto da resposta:', await response.text());
             contas = [];
         }
         
@@ -59,8 +72,11 @@ async function carregarDados() {
             emailConfigurado = null;
         }
         
+        console.log('✅ Carregamento de dados concluído');
+        
     } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
+        console.error('🔍 Stack trace:', error.stack);
         contas = [];
         emailConfigurado = null;
     }
@@ -409,7 +425,8 @@ function atualizarGraficos() {
 function renderizarContas() {
     try {
         console.log('🔄 Renderizando contas...');
-        console.log('📋 Total de contas:', contas.length);
+        console.log('📋 Total de contas na memória:', contas.length);
+        console.log('🕐 Timestamp da renderização:', new Date().toISOString());
         
         const listaContas = document.getElementById('listaContas');
         if (!listaContas) {
@@ -453,7 +470,16 @@ function renderizarContas() {
         
         console.log('📊 Contas após filtros:', contasFiltradas.length);
         
+        // Log detalhado das contas filtradas
+        if (contasFiltradas.length > 0) {
+            console.log('📋 Contas que serão renderizadas:');
+            contasFiltradas.forEach((conta, index) => {
+                console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+            });
+        }
+        
         if (contasFiltradas.length === 0) {
+            console.log('📭 Nenhuma conta encontrada após filtros');
             listaContas.innerHTML = `
                 <div class="conta-item" style="text-align: center; padding: 40px; color: #666;">
                     <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
@@ -464,10 +490,13 @@ function renderizarContas() {
             return;
         }
         
+        console.log('🎨 Gerando HTML para', contasFiltradas.length, 'contas');
         listaContas.innerHTML = contasFiltradas.map(conta => criarCardConta(conta)).join('');
+        console.log('✅ Renderização concluída');
         
     } catch (error) {
         console.error('❌ Erro ao renderizar contas:', error);
+        console.error('🔍 Stack trace:', error.stack);
         const listaContas = document.getElementById('listaContas');
         if (listaContas) {
             listaContas.innerHTML = `
