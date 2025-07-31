@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const moment = require('moment');
 const nodemailer = require('nodemailer');
+const fs = require('fs-extra');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,9 +16,52 @@ app.use(bodyParser.json());
 // Servir arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Armazenamento em memória (para Vercel)
+// Sistema de persistência de dados
+const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
 let contas = [];
 let nextId = 1;
+
+// Função para carregar dados do arquivo
+async function carregarDados() {
+    try {
+        // Criar pasta database se não existir
+        await fs.ensureDir(path.dirname(DATA_FILE));
+        
+        // Verificar se o arquivo existe
+        if (await fs.pathExists(DATA_FILE)) {
+            const dados = await fs.readJson(DATA_FILE);
+            contas = dados.contas || [];
+            nextId = dados.nextId || 1;
+            console.log('✅ Dados carregados com sucesso:', contas.length, 'contas');
+        } else {
+            console.log('📁 Arquivo de dados não encontrado, iniciando com dados vazios');
+            contas = [];
+            nextId = 1;
+        }
+    } catch (error) {
+        console.log('❌ Erro ao carregar dados:', error.message);
+        contas = [];
+        nextId = 1;
+    }
+}
+
+// Função para salvar dados no arquivo
+async function salvarDados() {
+    try {
+        await fs.ensureDir(path.dirname(DATA_FILE));
+        await fs.writeJson(DATA_FILE, {
+            contas: contas,
+            nextId: nextId,
+            ultimaAtualizacao: new Date().toISOString()
+        }, { spaces: 2 });
+        console.log('💾 Dados salvos com sucesso');
+    } catch (error) {
+        console.log('❌ Erro ao salvar dados:', error.message);
+    }
+}
+
+// Carregar dados ao iniciar o servidor
+carregarDados();
 
 // Configurações de e-mail
 const emailConfigs = {
@@ -181,56 +225,81 @@ app.get('/api/contas', (req, res) => {
     res.json(contas);
 });
 
-app.post('/api/contas', (req, res) => {
-    const novaConta = {
-        id: nextId++,
-        descricao: req.body.descricao,
-        valor: req.body.valor,
-        dataVencimento: req.body.dataVencimento,
-        categoria: req.body.categoria || 'Outros',
-        recorrente: req.body.recorrente || false,
-        paga: false,
-        dataCriacao: new Date().toISOString()
-    };
-    
-    contas.push(novaConta);
-    res.json(novaConta);
-});
-
-app.put('/api/contas/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const index = contas.findIndex(conta => conta.id === id);
-    
-    if (index !== -1) {
-        contas[index] = { ...contas[index], ...req.body };
-        res.json(contas[index]);
-    } else {
-        res.status(404).json({ error: 'Conta não encontrada' });
+app.post('/api/contas', async (req, res) => {
+    try {
+        const novaConta = {
+            id: nextId++,
+            descricao: req.body.descricao,
+            valor: req.body.valor,
+            dataVencimento: req.body.dataVencimento,
+            categoria: req.body.categoria || 'Outros',
+            tipo: req.body.tipo || 'conta', // 'conta' ou 'receita'
+            recorrente: req.body.recorrente || false,
+            paga: false,
+            dataCriacao: new Date().toISOString()
+        };
+        
+        contas.push(novaConta);
+        await salvarDados(); // Salvar dados após adicionar
+        res.json(novaConta);
+    } catch (error) {
+        console.log('❌ Erro ao adicionar conta:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
-app.delete('/api/contas/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const index = contas.findIndex(conta => conta.id === id);
-    
-    if (index !== -1) {
-        contas.splice(index, 1);
-        res.json({ message: 'Conta deletada com sucesso' });
-    } else {
-        res.status(404).json({ error: 'Conta não encontrada' });
+app.put('/api/contas/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const index = contas.findIndex(conta => conta.id === id);
+        
+        if (index !== -1) {
+            contas[index] = { ...contas[index], ...req.body };
+            await salvarDados(); // Salvar dados após editar
+            res.json(contas[index]);
+        } else {
+            res.status(404).json({ error: 'Conta não encontrada' });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao editar conta:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
-app.patch('/api/contas/:id/pagar', (req, res) => {
-    const id = parseInt(req.params.id);
-    const conta = contas.find(c => c.id === id);
-    
-    if (conta) {
-        conta.paga = true;
-        conta.dataPagamento = new Date().toISOString();
-        res.json(conta);
-    } else {
-        res.status(404).json({ error: 'Conta não encontrada' });
+app.delete('/api/contas/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const index = contas.findIndex(conta => conta.id === id);
+        
+        if (index !== -1) {
+            contas.splice(index, 1);
+            await salvarDados(); // Salvar dados após deletar
+            res.json({ message: 'Conta deletada com sucesso' });
+        } else {
+            res.status(404).json({ error: 'Conta não encontrada' });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao deletar conta:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.patch('/api/contas/:id/pagar', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const conta = contas.find(c => c.id === id);
+        
+        if (conta) {
+            conta.paga = true;
+            conta.dataPagamento = new Date().toISOString();
+            await salvarDados(); // Salvar dados após marcar como paga
+            res.json(conta);
+        } else {
+            res.status(404).json({ error: 'Conta não encontrada' });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao marcar conta como paga:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 

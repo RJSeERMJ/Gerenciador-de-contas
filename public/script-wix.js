@@ -1,5 +1,5 @@
-// Sistema de Gerenciamento de Contas - Versão para Hospedagem Gratuita
-// Usa localStorage para armazenamento local
+// Sistema de Gerenciamento de Contas - Versão Online
+// Usa APIs do servidor para persistência de dados
 
 // Variáveis globais
 let contas = [];
@@ -15,71 +15,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Verificar se é primeira vez
     if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
-        mostrarMensagem('Bem-vindo ao Família Jamar! Esta versão funciona sem servidor, usando armazenamento local do seu navegador.', 'info');
+        mostrarMensagem('Bem-vindo ao Família Jamar! Agora seus dados são salvos no servidor e podem ser acessados de qualquer computador.', 'info');
         localStorage.setItem('familiaJamarPrimeiraVez', 'true');
     }
 });
 
-// Funções de armazenamento local
-function salvarDados() {
+// Funções de comunicação com o servidor
+async function carregarDados() {
     try {
-        // Verificar se localStorage está disponível
-        if (typeof localStorage === 'undefined') {
-            console.error('❌ localStorage não está disponível');
-            throw new Error('localStorage não está disponível');
-        }
+        console.log('🔄 Carregando dados do servidor...');
         
-        // Verificar se os dados são válidos
-        if (!Array.isArray(contas)) {
-            console.error('❌ Dados de contas inválidos:', contas);
-            throw new Error('Dados de contas inválidos');
-        }
-        
-        // Salvar dados com tratamento de erro
-        localStorage.setItem('familiaJamarContas', JSON.stringify(contas));
-        localStorage.setItem('familiaJamarEmail', JSON.stringify(emailConfigurado));
-        
-        console.log('💾 Dados salvos com sucesso:', {
-            contas: contas.length,
-            email: emailConfigurado
-        });
-        
-    } catch (error) {
-        console.error('❌ Erro ao salvar dados:', error);
-        throw error; // Re-throw para que a função chamadora possa tratar
-    }
-}
-
-function carregarDados() {
-    try {
-        // Verificar se localStorage está disponível
-        if (typeof localStorage === 'undefined') {
-            console.error('❌ localStorage não está disponível');
-            return;
-        }
-        
-        const contasSalvas = localStorage.getItem('familiaJamarContas');
-        const emailSalvo = localStorage.getItem('familiaJamarEmail');
-        
-        if (contasSalvas) {
-            try {
-                const dadosContas = JSON.parse(contasSalvas);
-                if (Array.isArray(dadosContas)) {
-                    contas = dadosContas;
-                    console.log('📋 Contas carregadas:', contas.length);
-                } else {
-                    console.warn('⚠️ Dados de contas inválidos, usando array vazio');
-                    contas = [];
-                }
-            } catch (error) {
-                console.error('❌ Erro ao parsear dados de contas:', error);
-                contas = [];
-            }
+        // Carregar contas do servidor
+        const response = await fetch('/api/contas');
+        if (response.ok) {
+            contas = await response.json();
+            console.log('📋 Contas carregadas do servidor:', contas.length);
         } else {
-            console.log('📋 Nenhuma conta salva encontrada');
+            console.error('❌ Erro ao carregar contas:', response.status);
             contas = [];
         }
         
+        // Carregar configuração de e-mail do localStorage (mantido local)
+        const emailSalvo = localStorage.getItem('familiaJamarEmail');
         if (emailSalvo) {
             try {
                 const dadosEmail = JSON.parse(emailSalvo);
@@ -87,7 +44,6 @@ function carregarDados() {
                     emailConfigurado = dadosEmail;
                     console.log('📧 E-mail carregado:', emailConfigurado.email);
                 } else {
-                    console.warn('⚠️ Dados de e-mail inválidos');
                     emailConfigurado = null;
                 }
             } catch (error) {
@@ -95,7 +51,6 @@ function carregarDados() {
                 emailConfigurado = null;
             }
         } else {
-            console.log('📧 Nenhum e-mail salvo encontrado');
             emailConfigurado = null;
         }
         
@@ -596,33 +551,49 @@ function filtrarContas() {
 async function salvarConta(event) {
     event.preventDefault();
     
-    const formData = new FormData(event.target);
-    const valor = parseFloat(formData.get('valor')) || 0;
-    
-    const novaConta = {
-        id: Date.now(),
-        descricao: formData.get('descricao'),
-        valor: valor,
-        dataVencimento: formData.get('dataVencimento'),
-        categoria: formData.get('categoria'),
-        tipo: formData.get('tipo'),
-        paga: false,
-        recorrente: formData.get('recorrente') === 'on',
-        dataCriacao: new Date().toISOString()
-    };
-    
-    contas.push(novaConta);
-    salvarDados();
-    
-    fecharModalNovaConta();
-    atualizarDashboard();
-    renderizarContas();
-    
-    mostrarMensagem('Conta adicionada com sucesso!', 'success');
-    
-    // Simular notificação por e-mail
-    if (emailConfigurado) {
-        simularNotificacaoEmail(novaConta);
+    try {
+        const formData = new FormData(event.target);
+        const valor = parseFloat(formData.get('valor')) || 0;
+        
+        const novaConta = {
+            descricao: formData.get('descricao'),
+            valor: valor,
+            dataVencimento: formData.get('dataVencimento'),
+            categoria: formData.get('categoria'),
+            tipo: formData.get('tipo'),
+            recorrente: formData.get('recorrente') === 'on'
+        };
+        
+        // Enviar para o servidor
+        const response = await fetch('/api/contas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(novaConta)
+        });
+        
+        if (response.ok) {
+            const contaSalva = await response.json();
+            contas.push(contaSalva);
+            
+            fecharModalNovaConta();
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta adicionada com sucesso!', 'success');
+            
+            // Simular notificação por e-mail
+            if (emailConfigurado) {
+                simularNotificacaoEmail(contaSalva);
+            }
+        } else {
+            throw new Error('Erro ao salvar conta no servidor');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar conta:', error);
+        mostrarMensagem('Erro ao salvar conta. Tente novamente.', 'error');
     }
 }
 
@@ -644,42 +615,78 @@ async function editarConta(id) {
 async function atualizarConta(event) {
     event.preventDefault();
     
-    const formData = new FormData(event.target);
-    const id = parseInt(formData.get('id'));
-    const valor = parseFloat(formData.get('valor')) || 0;
-    
-    const contaIndex = contas.findIndex(c => c.id === id);
-    if (contaIndex === -1) return;
-    
-    contas[contaIndex] = {
-        ...contas[contaIndex],
-        descricao: formData.get('descricao'),
-        valor: valor,
-        dataVencimento: formData.get('dataVencimento'),
-        categoria: formData.get('categoria'),
-        tipo: formData.get('tipo'),
-        recorrente: formData.get('recorrente') === 'on'
-    };
-    
-    salvarDados();
-    
-    fecharModalEditarConta();
-    atualizarDashboard();
-    renderizarContas();
-    
-    mostrarMensagem('Conta atualizada com sucesso!', 'success');
+    try {
+        const formData = new FormData(event.target);
+        const id = parseInt(formData.get('id'));
+        const valor = parseFloat(formData.get('valor')) || 0;
+        
+        const dadosAtualizados = {
+            descricao: formData.get('descricao'),
+            valor: valor,
+            dataVencimento: formData.get('dataVencimento'),
+            categoria: formData.get('categoria'),
+            tipo: formData.get('tipo'),
+            recorrente: formData.get('recorrente') === 'on'
+        };
+        
+        // Enviar para o servidor
+        const response = await fetch(`/api/contas/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dadosAtualizados)
+        });
+        
+        if (response.ok) {
+            const contaAtualizada = await response.json();
+            
+            // Atualizar na lista local
+            const contaIndex = contas.findIndex(c => c.id === id);
+            if (contaIndex !== -1) {
+                contas[contaIndex] = contaAtualizada;
+            }
+            
+            fecharModalEditarConta();
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta atualizada com sucesso!', 'success');
+        } else {
+            throw new Error('Erro ao atualizar conta no servidor');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao atualizar conta:', error);
+        mostrarMensagem('Erro ao atualizar conta. Tente novamente.', 'error');
+    }
 }
 
 async function deletarConta(id) {
     if (!confirm('Tem certeza que deseja deletar esta conta?')) return;
     
-    contas = contas.filter(c => c.id !== id);
-    salvarDados();
-    
-    atualizarDashboard();
-    renderizarContas();
-    
-    mostrarMensagem('Conta deletada com sucesso!', 'success');
+    try {
+        // Enviar para o servidor
+        const response = await fetch(`/api/contas/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            // Remover da lista local
+            contas = contas.filter(c => c.id !== id);
+            
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta deletada com sucesso!', 'success');
+        } else {
+            throw new Error('Erro ao deletar conta no servidor');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao deletar conta:', error);
+        mostrarMensagem('Erro ao deletar conta. Tente novamente.', 'error');
+    }
 }
 
 async function marcarComoPaga(id) {
@@ -703,22 +710,28 @@ async function marcarComoPaga(id) {
             return;
         }
         
-        // Marcar como paga
-        contas[contaIndex] = {
-            ...contas[contaIndex],
-            paga: true,
-            dataPagamento: new Date().toISOString()
-        };
+        // Enviar para o servidor
+        const response = await fetch(`/api/contas/${id}/pagar`, {
+            method: 'PATCH'
+        });
         
-        // Salvar e atualizar
-        salvarDados();
-        atualizarDashboard();
-        renderizarContas();
-        
-        mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
+        if (response.ok) {
+            const contaAtualizada = await response.json();
+            
+            // Atualizar na lista local
+            contas[contaIndex] = contaAtualizada;
+            
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
+        } else {
+            throw new Error('Erro ao marcar conta como paga no servidor');
+        }
         
     } catch (error) {
-        mostrarMensagem('Erro ao processar pagamento', 'error');
+        console.error('❌ Erro ao marcar como paga:', error);
+        mostrarMensagem('Erro ao processar pagamento. Tente novamente.', 'error');
     }
 }
 
