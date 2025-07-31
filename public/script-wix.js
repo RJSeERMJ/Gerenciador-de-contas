@@ -203,9 +203,6 @@ function atualizarDashboard() {
 
 // Função para atualizar gráficos
 function atualizarGraficos() {
-    // Aqui você pode adicionar lógica para criar gráficos reais
-    // Por enquanto, vamos apenas mostrar informações básicas
-    
     const graficoCategoria = document.getElementById('graficoCategoria');
     const graficoEvolucao = document.getElementById('graficoEvolucao');
     
@@ -229,35 +226,167 @@ function atualizarGraficos() {
         }
     });
     
-    const contasHTML = Object.entries(categoriasContas)
-        .map(([categoria, dados]) => `
-            <div style="margin: 8px 0; padding: 10px; background: rgba(229, 62, 62, 0.1); border-radius: 8px; border-left: 3px solid #e53e3e;">
-                <strong style="color: #e53e3e;">${categoria}</strong><br>
-                Contas: ${dados.count} | Total: ${formatarMoeda(dados.total)}
-            </div>
-        `).join('');
+    // Criar gráfico de pizza para contas
+    const canvasContas = document.createElement('canvas');
+    canvasContas.id = 'graficoPizzaContas';
+    canvasContas.width = 300;
+    canvasContas.height = 300;
     
-    const receitasHTML = Object.entries(categoriasReceitas)
-        .map(([categoria, dados]) => `
-            <div style="margin: 8px 0; padding: 10px; background: rgba(56, 161, 105, 0.1); border-radius: 8px; border-left: 3px solid #38a169;">
-                <strong style="color: #38a169;">${categoria}</strong><br>
-                Receitas: ${dados.count} | Total: ${formatarMoeda(dados.total)}
-            </div>
-        `).join('');
+    // Criar gráfico de pizza para receitas
+    const canvasReceitas = document.createElement('canvas');
+    canvasReceitas.id = 'graficoPizzaReceitas';
+    canvasReceitas.width = 300;
+    canvasReceitas.height = 300;
+    
+    // Cores para o gráfico
+    const cores = [
+        '#e53e3e', '#f56565', '#fc8181', '#fed7d7', // Vermelhos para contas
+        '#38a169', '#48bb78', '#68d391', '#9ae6b4'  // Verdes para receitas
+    ];
+    
+    // Função para desenhar gráfico de pizza
+    function desenharGraficoPizza(canvas, dados, titulo, corBase) {
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(centerX, centerY) - 20;
+        
+        // Limpar canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (Object.keys(dados).length === 0) {
+            // Desenhar mensagem quando não há dados
+            ctx.fillStyle = '#718096';
+            ctx.font = '16px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Nenhum dado disponível', centerX, centerY);
+            return;
+        }
+        
+        // Calcular total
+        const total = Object.values(dados).reduce((sum, item) => sum + item.total, 0);
+        
+        if (total === 0) {
+            ctx.fillStyle = '#718096';
+            ctx.font = '16px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Nenhum valor disponível', centerX, centerY);
+            return;
+        }
+        
+        // Desenhar fatias do gráfico
+        let currentAngle = 0;
+        const entries = Object.entries(dados);
+        
+        entries.forEach(([categoria, item], index) => {
+            const sliceAngle = (item.total / total) * 2 * Math.PI;
+            const percentage = ((item.total / total) * 100).toFixed(1);
+            
+            // Desenhar fatia
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+            ctx.closePath();
+            
+            // Cor da fatia
+            const cor = cores[index % cores.length];
+            ctx.fillStyle = cor;
+            ctx.fill();
+            
+            // Borda da fatia
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Adicionar texto na fatia se for grande o suficiente
+            if (sliceAngle > 0.3) { // Se a fatia for maior que ~17 graus
+                const midAngle = currentAngle + sliceAngle / 2;
+                const textRadius = radius * 0.7;
+                const textX = centerX + Math.cos(midAngle) * textRadius;
+                const textY = centerY + Math.sin(midAngle) * textRadius;
+                
+                // Sombra do texto
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(percentage + '%', textX + 1, textY + 1);
+                
+                // Texto principal
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(percentage + '%', textX, textY);
+            }
+            
+            currentAngle += sliceAngle;
+        });
+        
+        // Desenhar título
+        ctx.fillStyle = corBase;
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(titulo, centerX, 20);
+        
+        // Desenhar total no centro
+        ctx.fillStyle = '#2d3748';
+        ctx.font = 'bold 18px Inter, sans-serif';
+        ctx.fillText(formatarMoeda(total), centerX, centerY + 5);
+        ctx.font = '12px Inter, sans-serif';
+        ctx.fillText('Total', centerX, centerY + 20);
+    }
+    
+    // Desenhar gráficos
+    desenharGraficoPizza(canvasContas, categoriasContas, 'Contas (Despesas)', '#e53e3e');
+    desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#38a169');
+    
+    // Criar legenda
+    function criarLegenda(dados, corBase) {
+        const entries = Object.entries(dados);
+        if (entries.length === 0) return '';
+        
+        const total = Object.values(dados).reduce((sum, item) => sum + item.total, 0);
+        
+        return entries.map(([categoria, item], index) => {
+            const percentage = total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0';
+            return `
+                <div style="display: flex; align-items: center; margin: 8px 0; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.8); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <div style="width: 12px; height: 12px; background: ${cores[index % cores.length]}; border-radius: 2px; margin-right: 10px;"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #2d3748;">${categoria}</div>
+                        <div style="font-size: 10px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: ${corBase}; font-weight: bold; font-size: 14px;">${formatarMoeda(item.total)}</div>
+                        <div style="font-size: 10px; color: #718096;">${percentage}%</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    const legendaContas = criarLegenda(categoriasContas, '#e53e3e');
+    const legendaReceitas = criarLegenda(categoriasReceitas, '#38a169');
     
     graficoCategoria.innerHTML = `
-        <div style="text-align: left;">
-            <h4 style="margin-bottom: 15px; color: #2d3748;">Distribuição por Categoria</h4>
-            ${contasHTML || receitasHTML ? `
-                <div style="margin-bottom: 20px;">
-                    <h5 style="color: #e53e3e; margin-bottom: 10px;">📊 Contas (Despesas)</h5>
-                    ${contasHTML || '<p style="color: #718096; font-style: italic;">Nenhuma conta cadastrada</p>'}
+        <div style="text-align: center;">
+            <div style="display: flex; justify-content: space-around; margin-bottom: 30px; flex-wrap: wrap;">
+                <div style="text-align: center; margin: 10px;">
+                    <h5 style="color: #e53e3e; margin-bottom: 15px; font-size: 16px;">📊 Contas (Despesas)</h5>
+                    ${canvasContas.outerHTML}
                 </div>
-                <div>
-                    <h5 style="color: #38a169; margin-bottom: 10px;">💰 Receitas</h5>
-                    ${receitasHTML || '<p style="color: #718096; font-style: italic;">Nenhuma receita cadastrada</p>'}
+                <div style="text-align: center; margin: 10px;">
+                    <h5 style="color: #38a169; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h5>
+                    ${canvasReceitas.outerHTML}
                 </div>
-            ` : '<p style="color: #718096;">Nenhuma entrada cadastrada</p>'}
+            </div>
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h5 style="color: #e53e3e; margin-bottom: 15px; font-size: 14px; text-align: center;">📊 Contas (Despesas)</h5>
+                    ${legendaContas || '<p style="color: #718096; font-style: italic; text-align: center;">Nenhuma conta cadastrada</p>'}
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h5 style="color: #38a169; margin-bottom: 15px; font-size: 14px; text-align: center;">💰 Receitas</h5>
+                    ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center;">Nenhuma receita cadastrada</p>'}
+                </div>
+            </div>
         </div>
     `;
     
