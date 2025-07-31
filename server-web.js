@@ -379,19 +379,44 @@ app.delete('/api/contas/:id', async (req, res) => {
 
 app.patch('/api/contas/:id/pagar', async (req, res) => {
     try {
+        console.log('💰 PATCH /api/contas/:id/pagar - Marcando conta como paga');
         const id = parseInt(req.params.id);
+        console.log('🆔 ID da conta:', id);
+        console.log('📊 Total de contas na memória:', contas.length);
+        
         const conta = contas.find(c => c.id === id);
+        console.log('🔍 Conta encontrada:', conta ? 'Sim' : 'Não');
         
         if (conta) {
+            console.log('📋 Conta antes da atualização:', {
+                id: conta.id,
+                descricao: conta.descricao,
+                paga: conta.paga,
+                dataPagamento: conta.dataPagamento
+            });
+            
             conta.paga = true;
             conta.dataPagamento = new Date().toISOString();
+            
+            console.log('✅ Conta após atualização:', {
+                id: conta.id,
+                descricao: conta.descricao,
+                paga: conta.paga,
+                dataPagamento: conta.dataPagamento
+            });
+            
+            console.log('💾 Salvando dados no servidor...');
             await salvarDados(); // Salvar dados após marcar como paga
+            console.log('✅ Dados salvos com sucesso');
+            
             res.json(conta);
         } else {
+            console.log('❌ Conta não encontrada com ID:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
         console.log('❌ Erro ao marcar conta como paga:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });

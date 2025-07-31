@@ -789,46 +789,77 @@ async function deletarConta(id) {
 
 async function marcarComoPaga(id) {
     try {
+        console.log('💰 marcarComoPaga chamada para ID:', id);
+        
         // Verificações básicas
         if (!id || !Array.isArray(contas)) {
+            console.error('❌ Dados inválidos:', { id, contas: Array.isArray(contas) });
             mostrarMensagem('Erro: Dados inválidos', 'error');
             return;
         }
         
         // Encontrar a conta
         const contaIndex = contas.findIndex(c => c && c.id === id);
+        console.log('🔍 Índice da conta encontrada:', contaIndex);
+        
         if (contaIndex === -1) {
+            console.error('❌ Conta não encontrada com ID:', id);
             mostrarMensagem('Conta não encontrada', 'error');
             return;
         }
         
+        console.log('📋 Conta antes da atualização:', {
+            id: contas[contaIndex].id,
+            descricao: contas[contaIndex].descricao,
+            paga: contas[contaIndex].paga
+        });
+        
         // Verificar se já está paga
         if (contas[contaIndex].paga === true) {
+            console.log('ℹ️ Conta já está marcada como paga');
             mostrarMensagem('Esta conta já está marcada como paga!', 'info');
             return;
         }
         
+        console.log('📤 Enviando requisição para o servidor...');
         // Enviar para o servidor
         const response = await fetch(`/api/contas/${id}/pagar`, {
             method: 'PATCH'
         });
         
+        console.log('📡 Status da resposta:', response.status);
+        console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
+        
         if (response.ok) {
             const contaAtualizada = await response.json();
+            console.log('✅ Conta atualizada recebida:', {
+                id: contaAtualizada.id,
+                descricao: contaAtualizada.descricao,
+                paga: contaAtualizada.paga,
+                dataPagamento: contaAtualizada.dataPagamento
+            });
             
             // Atualizar na lista local
             contas[contaIndex] = contaAtualizada;
+            console.log('💾 Conta atualizada na lista local');
             
+            console.log('🔄 Atualizando dashboard...');
             atualizarDashboard();
+            
+            console.log('🔄 Renderizando contas...');
             renderizarContas();
             
+            console.log('✅ Processo concluído com sucesso');
             mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
         } else {
-            throw new Error('Erro ao marcar conta como paga no servidor');
+            const errorText = await response.text();
+            console.error('❌ Erro na resposta do servidor:', errorText);
+            throw new Error(`Erro ao marcar conta como paga no servidor: ${response.status} - ${errorText}`);
         }
         
     } catch (error) {
         console.error('❌ Erro ao marcar como paga:', error);
+        console.error('🔍 Stack trace:', error.stack);
         mostrarMensagem('Erro ao processar pagamento. Tente novamente.', 'error');
     }
 }
