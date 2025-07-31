@@ -231,12 +231,15 @@
                     <div class="contas-actions">
                         <div class="export-import">
                             <button class="btn btn-outline" onclick="exportarContas()">
-                                <i class="fas fa-download"></i> Exportar
+                                <i class="fas fa-download"></i> Exportar CSV
+                            </button>
+                            <button class="btn btn-outline" onclick="baixarModeloCSV()">
+                                <i class="fas fa-file-download"></i> Modelo
                             </button>
                             <button class="btn btn-outline" onclick="importarContas()">
-                                <i class="fas fa-upload"></i> Importar
+                                <i class="fas fa-upload"></i> Importar CSV
                             </button>
-                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="processarImportacao(event)">
+                            <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="processarImportacao(event)">
                         </div>
                     </div>
                 </div>

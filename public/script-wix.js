@@ -815,26 +815,72 @@ async function salvarConfiguracaoEmail(event) {
     }
 }
 
-// Funções de exportação/importação
+// Funções de exportação/importação CSV
 function exportarContas() {
-    const dados = {
-        contas: contas,
-        email: emailConfigurado,
-        dataExportacao: new Date().toISOString(),
-        versao: '1.0'
-    };
+    // Cabeçalho do CSV
+    const headers = ['ID', 'Descrição', 'Valor', 'Data de Vencimento', 'Categoria', 'Tipo', 'Recorrente', 'Paga', 'Data de Criação', 'Data de Pagamento'];
     
-    const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+    // Converter contas para CSV
+    const csvContent = [
+        headers.join(','),
+        ...contas.map(conta => [
+            conta.id,
+            `"${conta.descricao.replace(/"/g, '""')}"`, // Escapar aspas duplas
+            conta.valor || 0,
+            conta.dataVencimento || '',
+            `"${conta.categoria || 'Outros'}"`,
+            conta.tipo || 'conta',
+            conta.recorrente ? 'Sim' : 'Não',
+            conta.paga ? 'Sim' : 'Não',
+            conta.dataCriacao || '',
+            conta.dataPagamento || ''
+        ].join(','))
+    ].join('\n');
+    
+    // Criar e baixar arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `familia-jamar-contas-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `familia-jamar-contas-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    mostrarMensagem('Dados exportados com sucesso!', 'success');
+    mostrarMensagem('Dados exportados em CSV com sucesso!', 'success');
+}
+
+function baixarModeloCSV() {
+    // Cabeçalho do CSV modelo
+    const headers = ['ID', 'Descrição', 'Valor', 'Data de Vencimento', 'Categoria', 'Tipo', 'Recorrente', 'Paga', 'Data de Criação', 'Data de Pagamento'];
+    
+    // Dados de exemplo
+    const exemplos = [
+        ['1', 'Conta de Luz', '150.00', '2024-01-15', 'Energia', 'conta', 'Sim', 'Não', '2024-01-01', ''],
+        ['2', 'Salário', '3000.00', '2024-01-05', 'Trabalho', 'receita', 'Sim', 'Sim', '2024-01-01', '2024-01-05'],
+        ['3', 'Internet', '89.90', '2024-01-20', 'Serviços', 'conta', 'Sim', 'Não', '2024-01-01', ''],
+        ['4', 'Freelance', '500.00', '2024-01-10', 'Trabalho', 'receita', 'Não', 'Sim', '2024-01-01', '2024-01-10']
+    ];
+    
+    // Criar conteúdo CSV
+    const csvContent = [
+        headers.join(','),
+        ...exemplos.map(row => row.join(','))
+    ].join('\n');
+    
+    // Criar e baixar arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-contas-familia-jamar.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    mostrarMensagem('Arquivo modelo baixado com sucesso!', 'success');
 }
 
 function importarContas() {
@@ -848,31 +894,141 @@ function processarImportacao(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const dados = JSON.parse(e.target.result);
+            const csvContent = e.target.result;
+            const linhas = csvContent.split('\n');
             
-            if (dados.contas && Array.isArray(dados.contas)) {
-                contas = dados.contas;
-                if (dados.email) {
-                    emailConfigurado = dados.email;
-                }
-                
-                // Nota: Importação agora é apenas local, não salva no servidor
-                // Para salvar no servidor, seria necessário enviar cada conta individualmente
-                atualizarDashboard();
-                renderizarContas();
-                
-                mostrarMensagem(`Importação realizada com sucesso! ${contas.length} contas importadas. (Nota: Dados apenas locais)`, 'success');
-            } else {
-                mostrarMensagem('Arquivo inválido!', 'error');
+            if (linhas.length < 2) {
+                mostrarMensagem('Arquivo CSV inválido! Deve ter pelo menos cabeçalho e uma linha de dados.', 'error');
+                return;
             }
+            
+            // Verificar cabeçalho
+            const headers = linhas[0].split(',').map(h => h.trim());
+            const expectedHeaders = ['ID', 'Descrição', 'Valor', 'Data de Vencimento', 'Categoria', 'Tipo', 'Recorrente', 'Paga', 'Data de Criação', 'Data de Pagamento'];
+            
+            if (!expectedHeaders.every(header => headers.includes(header))) {
+                mostrarMensagem('Formato de CSV inválido! Use o arquivo modelo como referência.', 'error');
+                return;
+            }
+            
+            // Processar linhas de dados
+            const novasContas = [];
+            for (let i = 1; i < linhas.length; i++) {
+                const linha = linhas[i].trim();
+                if (!linha) continue; // Pular linhas vazias
+                
+                // Parsear CSV considerando aspas
+                const valores = parseCSVLine(linha);
+                
+                if (valores.length >= 8) {
+                    const conta = {
+                        id: parseInt(valores[0]) || Date.now() + i,
+                        descricao: valores[1].replace(/^"|"$/g, ''), // Remover aspas
+                        valor: parseFloat(valores[2]) || 0,
+                        dataVencimento: valores[3] || '',
+                        categoria: valores[4].replace(/^"|"$/g, '') || 'Outros',
+                        tipo: valores[5] || 'conta',
+                        recorrente: valores[6].toLowerCase() === 'sim',
+                        paga: valores[7].toLowerCase() === 'sim',
+                        dataCriacao: valores[8] || new Date().toISOString(),
+                        dataPagamento: valores[9] || ''
+                    };
+                    
+                    novasContas.push(conta);
+                }
+            }
+            
+            if (novasContas.length > 0) {
+                // Adicionar contas ao servidor
+                importarContasParaServidor(novasContas);
+            } else {
+                mostrarMensagem('Nenhuma conta válida encontrada no arquivo!', 'error');
+            }
+            
         } catch (error) {
-            mostrarMensagem('Erro ao processar arquivo!', 'error');
+            console.error('Erro ao processar CSV:', error);
+            mostrarMensagem('Erro ao processar arquivo CSV! Verifique o formato.', 'error');
         }
     };
     reader.readAsText(file);
     
     // Limpar input
     event.target.value = '';
+}
+
+// Função para parsear linha CSV considerando aspas
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    result.push(current.trim());
+    return result;
+}
+
+// Função para importar contas para o servidor
+async function importarContasParaServidor(novasContas) {
+    try {
+        let sucessos = 0;
+        let erros = 0;
+        
+        for (const conta of novasContas) {
+            try {
+                const response = await fetch('/api/contas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        descricao: conta.descricao,
+                        valor: conta.valor,
+                        dataVencimento: conta.dataVencimento,
+                        categoria: conta.categoria,
+                        tipo: conta.tipo,
+                        recorrente: conta.recorrente
+                    })
+                });
+                
+                if (response.ok) {
+                    const contaSalva = await response.json();
+                    contas.push(contaSalva);
+                    sucessos++;
+                } else {
+                    erros++;
+                }
+            } catch (error) {
+                console.error('Erro ao importar conta:', error);
+                erros++;
+            }
+        }
+        
+        // Atualizar interface
+        atualizarDashboard();
+        renderizarContas();
+        
+        if (sucessos > 0) {
+            mostrarMensagem(`Importação concluída! ${sucessos} contas importadas com sucesso${erros > 0 ? `, ${erros} erros` : ''}.`, 'success');
+        } else {
+            mostrarMensagem('Nenhuma conta foi importada. Verifique o formato do arquivo.', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro na importação:', error);
+        mostrarMensagem('Erro durante a importação. Tente novamente.', 'error');
+    }
 }
 
 // Funções de notificação (agora usando servidor real)
