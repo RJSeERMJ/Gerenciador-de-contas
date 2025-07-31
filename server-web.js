@@ -40,9 +40,10 @@ async function conectarMongoDB() {
         console.log('❌ Erro ao conectar ao MongoDB:', error.message);
         console.log('🔍 Stack trace:', error.stack);
         
-        // Fallback para arquivo local se MongoDB não estiver disponível
-        console.log('🔄 Usando fallback para arquivo local...');
-        await carregarDadosFallback();
+        // No Vercel, não podemos usar arquivo local, então inicializamos com dados vazios
+        console.log('🔄 Inicializando com dados vazios (Vercel)...');
+        contas = [];
+        nextId = 1;
     }
 }
 
@@ -53,6 +54,8 @@ async function carregarDados() {
         
         if (!db) {
             console.log('❌ Conexão com MongoDB não disponível');
+            contas = [];
+            nextId = 1;
             return;
         }
         
@@ -123,34 +126,7 @@ async function salvarDados() {
     }
 }
 
-// Função fallback para carregar dados de arquivo local
-async function carregarDadosFallback() {
-    try {
-        console.log('🔄 Carregando dados do arquivo local (fallback)...');
-        const fs = require('fs-extra');
-        const DATA_FILE = path.join(__dirname, 'database', 'contas.json');
-        
-        // Criar pasta database se não existir
-        await fs.ensureDir(path.dirname(DATA_FILE));
-        
-        // Verificar se o arquivo existe
-        if (await fs.pathExists(DATA_FILE)) {
-            console.log('📄 Arquivo de dados encontrado, lendo...');
-            const dados = await fs.readJson(DATA_FILE);
-            contas = dados.contas || [];
-            nextId = dados.nextId || 1;
-            console.log('✅ Dados carregados do arquivo:', contas.length, 'contas');
-        } else {
-            console.log('📁 Arquivo de dados não encontrado, iniciando com dados vazios');
-            contas = [];
-            nextId = 1;
-        }
-    } catch (error) {
-        console.log('❌ Erro ao carregar dados do arquivo:', error.message);
-        contas = [];
-        nextId = 1;
-    }
-}
+
 
 // Conectar ao MongoDB ao iniciar o servidor
 conectarMongoDB();
@@ -317,6 +293,8 @@ app.get('/api/contas', (req, res) => {
     console.log('📋 GET /api/contas - Solicitado');
     console.log('📊 Total de contas na memória:', contas.length);
     console.log('🕐 Timestamp da requisição:', new Date().toISOString());
+    console.log('🔍 Tipo da variável contas:', typeof contas);
+    console.log('🔍 Conteúdo da variável contas:', JSON.stringify(contas, null, 2));
     
     // Log detalhado das contas sendo enviadas
     if (contas.length > 0) {
@@ -733,6 +711,9 @@ app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📱 Sistema Família Jamar online!`);
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
+    console.log('🔍 Verificando se dados foram carregados...');
+    console.log('📊 Contas na memória:', contas.length);
+    console.log('🆔 Próximo ID:', nextId);
 });
 
 module.exports = app; 
