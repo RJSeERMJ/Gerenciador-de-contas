@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const moment = require('moment');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,17 +15,85 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração de persistência
+// Configuração MongoDB Atlas
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'familia-jamar';
+const COLLECTION_NAME = 'contas';
+
+// Configuração de fallback (JSON local)
 const ARQUIVO_DADOS = path.join(__dirname, 'database', 'contas.json');
 const ARQUIVO_CONFIG = path.join(__dirname, 'database', 'config.json');
 
 let contas = [];
 let nextId = 1;
+let db = null;
+let client = null;
 
-// Função para carregar dados
-function carregarDados() {
+// Função para conectar ao MongoDB Atlas
+async function conectarMongoDB() {
+    try {
+        console.log('🔄 Conectando ao MongoDB Atlas...');
+        
+        client = new MongoClient(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        
+        await client.connect();
+        db = client.db(DB_NAME);
+        
+        console.log('✅ Conectado ao MongoDB Atlas com sucesso');
+        console.log('📊 Banco:', DB_NAME);
+        console.log('📋 Coleção:', COLLECTION_NAME);
+        
+        return true;
+    } catch (error) {
+        console.log('❌ Erro ao conectar ao MongoDB Atlas:', error.message);
+        console.log('💡 Usando fallback para JSON local...');
+        return false;
+    }
+}
+
+// Função para carregar dados (MongoDB + fallback JSON)
+async function carregarDados() {
     try {
         console.log('🔄 Carregando dados...');
+        
+        // Tentar carregar do MongoDB Atlas
+        if (db) {
+            try {
+                const collection = db.collection(COLLECTION_NAME);
+                const contasMongo = await collection.find({}).toArray();
+                
+                if (contasMongo.length > 0) {
+                    contas = contasMongo;
+                    nextId = Math.max(...contas.map(c => c.id), 0) + 1;
+                    console.log('✅ Contas carregadas do MongoDB Atlas:', contas.length);
+                    console.log('🆔 Próximo ID:', nextId);
+                    
+                    // Salvar backup no JSON local
+                    salvarDadosLocais();
+                    return;
+                }
+            } catch (error) {
+                console.log('❌ Erro ao carregar do MongoDB:', error.message);
+            }
+        }
+        
+        // Fallback: carregar do JSON local
+        carregarDadosLocais();
+        
+    } catch (error) {
+        console.log('❌ Erro ao carregar dados:', error.message);
+        contas = [];
+        nextId = 1;
+    }
+}
+
+// Função para carregar dados do JSON local
+function carregarDadosLocais() {
+    try {
+        console.log('📁 Carregando dados do JSON local...');
         
         // Criar diretório se não existir
         const dir = path.dirname(ARQUIVO_DADOS);
@@ -36,7 +105,7 @@ function carregarDados() {
         if (fs.existsSync(ARQUIVO_DADOS)) {
             const dadosContas = fs.readFileSync(ARQUIVO_DADOS, 'utf8');
             contas = JSON.parse(dadosContas);
-            console.log('✅ Contas carregadas do arquivo:', contas.length);
+            console.log('✅ Contas carregadas do JSON local:', contas.length);
         } else {
             contas = [];
             console.log('📝 Arquivo de contas não encontrado, inicializando vazio');
@@ -47,7 +116,7 @@ function carregarDados() {
             const dadosConfig = fs.readFileSync(ARQUIVO_CONFIG, 'utf8');
             const config = JSON.parse(dadosConfig);
             nextId = config.nextId || 1;
-            console.log('✅ Configuração carregada do arquivo');
+            console.log('✅ Configuração carregada do JSON local');
         } else {
             nextId = 1;
             console.log('📝 Arquivo de configuração não encontrado, inicializando com ID 1');
@@ -64,19 +133,47 @@ function carregarDados() {
         }
         
     } catch (error) {
-        console.log('❌ Erro ao carregar dados:', error.message);
+        console.log('❌ Erro ao carregar dados locais:', error.message);
         contas = [];
         nextId = 1;
     }
 }
 
-// Função para salvar dados
-function salvarDados() {
+// Função para salvar dados (MongoDB + backup JSON)
+async function salvarDados() {
     try {
         console.log('💾 Salvando dados...');
         console.log('📊 Total de contas para salvar:', contas.length);
         console.log('🆔 Próximo ID:', nextId);
         
+        // Tentar salvar no MongoDB Atlas
+        if (db) {
+            try {
+                const collection = db.collection(COLLECTION_NAME);
+                
+                // Limpar coleção e inserir todas as contas
+                await collection.deleteMany({});
+                if (contas.length > 0) {
+                    await collection.insertMany(contas);
+                }
+                
+                console.log('✅ Dados salvos no MongoDB Atlas');
+            } catch (error) {
+                console.log('❌ Erro ao salvar no MongoDB:', error.message);
+            }
+        }
+        
+        // Sempre salvar backup no JSON local
+        salvarDadosLocais();
+        
+    } catch (error) {
+        console.log('❌ Erro ao salvar dados:', error.message);
+    }
+}
+
+// Função para salvar dados no JSON local
+function salvarDadosLocais() {
+    try {
         // Criar diretório se não existir
         const dir = path.dirname(ARQUIVO_DADOS);
         if (!fs.existsSync(dir)) {
@@ -90,11 +187,11 @@ function salvarDados() {
         const config = { nextId, ultimaAtualizacao: new Date().toISOString() };
         fs.writeFileSync(ARQUIVO_CONFIG, JSON.stringify(config, null, 2));
         
-        console.log('✅ Dados salvos com sucesso');
+        console.log('✅ Backup salvo no JSON local');
         console.log('📁 Arquivo:', ARQUIVO_DADOS);
         
     } catch (error) {
-        console.log('❌ Erro ao salvar dados:', error.message);
+        console.log('❌ Erro ao salvar dados locais:', error.message);
     }
 }
 
@@ -227,7 +324,7 @@ app.get('/api/contas', (req, res) => {
     res.json(contas);
 });
 
-app.post('/api/contas', (req, res) => {
+app.post('/api/contas', async (req, res) => {
     try {
         console.log('➕ POST /api/contas - Nova conta sendo adicionada');
         console.log('📝 Dados recebidos:', req.body);
@@ -245,7 +342,7 @@ app.post('/api/contas', (req, res) => {
         };
         
         contas.push(novaConta);
-        salvarDados();
+        await salvarDados();
         
         res.json(novaConta);
     } catch (error) {
@@ -254,14 +351,14 @@ app.post('/api/contas', (req, res) => {
     }
 });
 
-app.put('/api/contas/:id', (req, res) => {
+app.put('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const index = contas.findIndex(conta => conta.id === id);
         
         if (index !== -1) {
             contas[index] = { ...contas[index], ...req.body };
-            salvarDados();
+            await salvarDados();
             res.json(contas[index]);
         } else {
             res.status(404).json({ error: 'Conta não encontrada' });
@@ -272,14 +369,14 @@ app.put('/api/contas/:id', (req, res) => {
     }
 });
 
-app.delete('/api/contas/:id', (req, res) => {
+app.delete('/api/contas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const index = contas.findIndex(conta => conta.id === id);
         
         if (index !== -1) {
             contas.splice(index, 1);
-            salvarDados();
+            await salvarDados();
             res.json({ success: true });
         } else {
             res.status(404).json({ error: 'Conta não encontrada' });
@@ -290,7 +387,7 @@ app.delete('/api/contas/:id', (req, res) => {
     }
 });
 
-app.post('/api/contas/:id/pagar', (req, res) => {
+app.post('/api/contas/:id/pagar', async (req, res) => {
     try {
         console.log('💰 POST /api/contas/:id/pagar - Marcando conta como paga');
         const id = parseInt(req.params.id);
@@ -299,7 +396,7 @@ app.post('/api/contas/:id/pagar', (req, res) => {
         if (conta) {
             conta.paga = true;
             conta.dataPagamento = new Date().toISOString();
-            salvarDados();
+            await salvarDados();
             res.json({ success: true });
         } else {
             res.status(404).json({ error: 'Conta não encontrada' });
@@ -489,17 +586,40 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index-wix.html'));
 });
 
-// Carregar dados ao iniciar
-carregarDados();
+// Inicializar sistema
+async function inicializarSistema() {
+    try {
+        console.log('🚀 Inicializando Sistema Família Jamar...');
+        
+        // Tentar conectar ao MongoDB Atlas
+        const mongoConectado = await conectarMongoDB();
+        
+        if (mongoConectado) {
+            console.log('🗄️ Usando MongoDB Atlas como banco principal');
+        } else {
+            console.log('📁 Usando JSON local como banco principal');
+        }
+        
+        // Carregar dados
+        await carregarDados();
+        
+        // Iniciar servidor
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor rodando na porta ${PORT}`);
+            console.log(`📱 Sistema Família Jamar online!`);
+            console.log(`🌐 Acesse: http://localhost:${PORT}`);
+            console.log('🔍 Verificando se dados foram carregados...');
+            console.log('📊 Contas na memória:', contas.length);
+            console.log('🆔 Próximo ID:', nextId);
+        });
+        
+    } catch (error) {
+        console.log('❌ Erro ao inicializar sistema:', error.message);
+        process.exit(1);
+    }
+}
 
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📱 Sistema Família Jamar online!`);
-    console.log(`🌐 Acesse: http://localhost:${PORT}`);
-    console.log('🔍 Verificando se dados foram carregados...');
-    console.log('📊 Contas na memória:', contas.length);
-    console.log('🆔 Próximo ID:', nextId);
-});
+// Inicializar sistema
+inicializarSistema();
 
 module.exports = app; 
