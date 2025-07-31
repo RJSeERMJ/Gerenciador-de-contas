@@ -257,8 +257,8 @@ body::before {
 
 /* Gráficos do Dashboard */
 .dashboard-charts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 30px;
     margin-top: 30px;
 }
@@ -629,7 +629,6 @@ body::before {
     }
 
     .dashboard-charts {
-        grid-template-columns: 1fr;
         gap: 20px;
     }
 

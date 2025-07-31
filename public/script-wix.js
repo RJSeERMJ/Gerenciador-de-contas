@@ -226,18 +226,6 @@ function atualizarGraficos() {
         }
     });
     
-    // Criar gráfico de pizza para contas
-    const canvasContas = document.createElement('canvas');
-    canvasContas.id = 'graficoPizzaContas';
-    canvasContas.width = 300;
-    canvasContas.height = 300;
-    
-    // Criar gráfico de pizza para receitas
-    const canvasReceitas = document.createElement('canvas');
-    canvasReceitas.id = 'graficoPizzaReceitas';
-    canvasReceitas.width = 300;
-    canvasReceitas.height = 300;
-    
     // Cores para o gráfico
     const cores = [
         '#e53e3e', '#f56565', '#fc8181', '#fed7d7', // Vermelhos para contas
@@ -249,7 +237,7 @@ function atualizarGraficos() {
         const ctx = canvas.getContext('2d');
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const radius = Math.min(centerX, centerY) - 20;
+        const radius = Math.min(centerX, centerY) - 30;
         
         // Limpar canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -257,7 +245,7 @@ function atualizarGraficos() {
         if (Object.keys(dados).length === 0) {
             // Desenhar mensagem quando não há dados
             ctx.fillStyle = '#718096';
-            ctx.font = '16px Inter, sans-serif';
+            ctx.font = '14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Nenhum dado disponível', centerX, centerY);
             return;
@@ -268,7 +256,7 @@ function atualizarGraficos() {
         
         if (total === 0) {
             ctx.fillStyle = '#718096';
-            ctx.font = '16px Inter, sans-serif';
+            ctx.font = '14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Nenhum valor disponível', centerX, centerY);
             return;
@@ -307,7 +295,7 @@ function atualizarGraficos() {
                 
                 // Sombra do texto
                 ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.font = 'bold 11px Inter, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(percentage + '%', textX + 1, textY + 1);
                 
@@ -319,25 +307,16 @@ function atualizarGraficos() {
             currentAngle += sliceAngle;
         });
         
-        // Desenhar título
-        ctx.fillStyle = corBase;
-        ctx.font = 'bold 14px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(titulo, centerX, 20);
-        
         // Desenhar total no centro
         ctx.fillStyle = '#2d3748';
-        ctx.font = 'bold 18px Inter, sans-serif';
+        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.textAlign = 'center';
         ctx.fillText(formatarMoeda(total), centerX, centerY + 5);
-        ctx.font = '12px Inter, sans-serif';
+        ctx.font = '11px Inter, sans-serif';
         ctx.fillText('Total', centerX, centerY + 20);
     }
     
-    // Desenhar gráficos
-    desenharGraficoPizza(canvasContas, categoriasContas, 'Contas (Despesas)', '#e53e3e');
-    desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#38a169');
-    
-    // Criar legenda
+    // Criar legenda simplificada
     function criarLegenda(dados, corBase) {
         const entries = Object.entries(dados);
         if (entries.length === 0) return '';
@@ -347,48 +326,59 @@ function atualizarGraficos() {
         return entries.map(([categoria, item], index) => {
             const percentage = total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0';
             return `
-                <div style="display: flex; align-items: center; margin: 8px 0; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.8); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    <div style="width: 12px; height: 12px; background: ${cores[index % cores.length]}; border-radius: 2px; margin-right: 10px;"></div>
+                <div style="display: flex; align-items: center; margin: 5px 0; font-size: 11px; padding: 6px; background: rgba(255,255,255,0.9); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="width: 10px; height: 10px; background: ${cores[index % cores.length]}; border-radius: 2px; margin-right: 8px;"></div>
                     <div style="flex: 1;">
-                        <div style="font-weight: bold; color: #2d3748;">${categoria}</div>
-                        <div style="font-size: 10px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
+                        <div style="font-weight: bold; color: #2d3748; font-size: 11px;">${categoria}</div>
+                        <div style="font-size: 9px; color: #718096;">${item.count} ${item.count === 1 ? 'item' : 'itens'}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="color: ${corBase}; font-weight: bold; font-size: 14px;">${formatarMoeda(item.total)}</div>
-                        <div style="font-size: 10px; color: #718096;">${percentage}%</div>
+                        <div style="color: ${corBase}; font-weight: bold; font-size: 12px;">${formatarMoeda(item.total)}</div>
+                        <div style="font-size: 9px; color: #718096;">${percentage}%</div>
                     </div>
                 </div>
             `;
         }).join('');
     }
     
+    // Criar HTML simplificado para os gráficos
     const legendaContas = criarLegenda(categoriasContas, '#e53e3e');
     const legendaReceitas = criarLegenda(categoriasReceitas, '#38a169');
     
     graficoCategoria.innerHTML = `
-        <div style="text-align: center;">
-            <div style="display: flex; justify-content: space-around; margin-bottom: 30px; flex-wrap: wrap;">
-                <div style="text-align: center; margin: 10px;">
-                    <h5 style="color: #e53e3e; margin-bottom: 15px; font-size: 16px;">📊 Contas (Despesas)</h5>
-                    ${canvasContas.outerHTML}
-                </div>
-                <div style="text-align: center; margin: 10px;">
-                    <h5 style="color: #38a169; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h5>
-                    ${canvasReceitas.outerHTML}
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+            <!-- Gráfico de Contas -->
+            <div style="text-align: center; min-width: 280px;">
+                <h4 style="color: #e53e3e; margin-bottom: 15px; font-size: 16px;">📊 Contas (Despesas)</h4>
+                <canvas id="graficoPizzaContas" width="250" height="250" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; margin-bottom: 15px;"></canvas>
+                <div style="max-width: 250px; margin: 0 auto;">
+                    ${legendaContas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma conta cadastrada</p>'}
                 </div>
             </div>
-            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
-                <div style="flex: 1; min-width: 300px;">
-                    <h5 style="color: #e53e3e; margin-bottom: 15px; font-size: 14px; text-align: center;">📊 Contas (Despesas)</h5>
-                    ${legendaContas || '<p style="color: #718096; font-style: italic; text-align: center;">Nenhuma conta cadastrada</p>'}
-                </div>
-                <div style="flex: 1; min-width: 300px;">
-                    <h5 style="color: #38a169; margin-bottom: 15px; font-size: 14px; text-align: center;">💰 Receitas</h5>
-                    ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center;">Nenhuma receita cadastrada</p>'}
+            
+            <!-- Gráfico de Receitas -->
+            <div style="text-align: center; min-width: 280px;">
+                <h4 style="color: #38a169; margin-bottom: 15px; font-size: 16px;">💰 Receitas</h4>
+                <canvas id="graficoPizzaReceitas" width="250" height="250" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; margin-bottom: 15px;"></canvas>
+                <div style="max-width: 250px; margin: 0 auto;">
+                    ${legendaReceitas || '<p style="color: #718096; font-style: italic; text-align: center; font-size: 12px;">Nenhuma receita cadastrada</p>'}
                 </div>
             </div>
         </div>
     `;
+    
+    // Desenhar os gráficos após criar os elementos canvas
+    setTimeout(() => {
+        const canvasContas = document.getElementById('graficoPizzaContas');
+        const canvasReceitas = document.getElementById('graficoPizzaReceitas');
+        
+        if (canvasContas) {
+            desenharGraficoPizza(canvasContas, categoriasContas, 'Contas', '#e53e3e');
+        }
+        if (canvasReceitas) {
+            desenharGraficoPizza(canvasReceitas, categoriasReceitas, 'Receitas', '#38a169');
+        }
+    }, 100);
     
     // Estatísticas de evolução (últimos 6 meses) - separando contas e receitas
     const hoje = new Date();
