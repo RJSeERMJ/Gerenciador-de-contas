@@ -4,227 +4,81 @@
 // Variáveis globais
 let contas = [];
 let emailConfigurado = null;
-let socket = null;
-let connectionStatus = {
-    connected: false,
-    database: 'Local',
-    retryCount: 0,
-    maxRetries: 5
-};
 
-// Inicialização quando o DOM estiver carregado
+// Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Inicializando Sistema Família Jamar...');
-    
     try {
-        // Conectar WebSocket primeiro
-        await conectarWebSocket();
-        
-        // Carregar dados
         await carregarDados();
-        
-        // Configurar interface
         definirDataMinima();
         atualizarDashboard();
         renderizarContas();
-        atualizarCategorias();
-        atualizarCategoriasEdit();
         configurarAtalhosTeclado();
         
-        // Mostrar aba dashboard por padrão
-        mostrarAba('dashboard');
-        
-        console.log('✅ Sistema inicializado com sucesso');
-        
+        // Verificar se é primeira vez
+        if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
+            mostrarMensagem('Bem-vindo ao Família Jamar! Agora seus dados são salvos no servidor e podem ser acessados de qualquer computador.', 'info');
+            localStorage.setItem('familiaJamarPrimeiraVez', 'true');
+        }
     } catch (error) {
         console.error('❌ Erro na inicialização:', error);
-        mostrarMensagem('Erro ao inicializar o sistema. Recarregue a página.', 'error');
+        mostrarMensagem('Erro ao carregar dados. Recarregue a página.', 'error');
     }
 });
 
-// Função para conectar WebSocket
-async function conectarWebSocket() {
-    try {
-        console.log('🔌 Tentando conectar ao WebSocket...');
-        
-        // Verificar se Socket.IO está disponível
-        if (typeof io === 'undefined') {
-            console.log('⚠️ Socket.IO não disponível, continuando sem WebSocket');
-            return;
-        }
-        
-        // Usar a mesma URL do servidor
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}`;
-        
-        console.log('🔌 Conectando em:', wsUrl);
-        
-        return new Promise((resolve, reject) => {
-            socket = io(wsUrl, {
-                transports: ['websocket', 'polling'],
-                timeout: 10000,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000
-            });
-            
-            socket.on('connect', () => {
-                console.log('✅ WebSocket conectado:', socket.id);
-                connectionStatus.connected = true;
-                connectionStatus.retryCount = 0;
-                resolve();
-            });
-            
-            socket.on('connect_error', (error) => {
-                console.log('❌ Erro na conexão WebSocket:', error);
-                connectionStatus.connected = false;
-                connectionStatus.retryCount++;
-                
-                if (connectionStatus.retryCount >= connectionStatus.maxRetries) {
-                    console.log('⚠️ Máximo de tentativas de conexão atingido, continuando sem WebSocket');
-                    resolve();
-                }
-            });
-            
-            socket.on('disconnect', (reason) => {
-                console.log('❌ WebSocket desconectado. Razão:', reason);
-                connectionStatus.connected = false;
-            });
-            
-            socket.on('error', (error) => {
-                console.log('❌ Erro no WebSocket:', error);
-            });
-            
-            // Receber status da conexão
-            socket.on('connection_status', (status) => {
-                console.log('📊 Status da conexão recebido:', status);
-                connectionStatus.database = status.database;
-                mostrarStatusConexao(status);
-            });
-            
-            // Receber dados iniciais
-            socket.on('contas_loaded', (dados) => {
-                console.log('📋 Dados recebidos via WebSocket:', dados.length, 'contas');
-                contas = dados;
-                atualizarDashboard();
-                renderizarContas();
-            });
-            
-            // Receber notificações de mudanças
-            socket.on('conta_added', (novaConta) => {
-                console.log('➕ Nova conta recebida via WebSocket:', novaConta);
-                contas.push(novaConta);
-                atualizarDashboard();
-                renderizarContas();
-                mostrarMensagem(`Nova conta "${novaConta.descricao}" adicionada!`, 'success');
-            });
-            
-            socket.on('conta_updated', (contaAtualizada) => {
-                console.log('✏️ Conta atualizada via WebSocket:', contaAtualizada);
-                const index = contas.findIndex(c => c.id === contaAtualizada.id);
-                if (index !== -1) {
-                    contas[index] = contaAtualizada;
-                    atualizarDashboard();
-                    renderizarContas();
-                    mostrarMensagem(`Conta "${contaAtualizada.descricao}" atualizada!`, 'success');
-                }
-            });
-            
-            socket.on('conta_deleted', (dados) => {
-                console.log('🗑️ Conta deletada via WebSocket:', dados);
-                const index = contas.findIndex(c => c.id === dados.id);
-                if (index !== -1) {
-                    const contaRemovida = contas[index];
-                    contas.splice(index, 1);
-                    atualizarDashboard();
-                    renderizarContas();
-                    mostrarMensagem(`Conta "${contaRemovida.descricao}" removida!`, 'success');
-                }
-            });
-            
-            socket.on('conta_paid', (conta) => {
-                console.log('💳 Conta marcada como paga via WebSocket:', conta);
-                const index = contas.findIndex(c => c.id === conta.id);
-                if (index !== -1) {
-                    contas[index] = conta;
-                    atualizarDashboard();
-                    renderizarContas();
-                    mostrarMensagem(`Conta "${conta.descricao}" marcada como paga!`, 'success');
-                }
-            });
-            
-            socket.on('contas_updated', (dados) => {
-                console.log('🔄 Atualização geral recebida via WebSocket:', dados);
-                carregarDados();
-            });
-            
-            // Timeout para conexão
-            setTimeout(() => {
-                if (!connectionStatus.connected) {
-                    console.log('⏰ Timeout na conexão WebSocket, continuando...');
-                    resolve();
-                }
-            }, 5000);
-        });
-        
-    } catch (error) {
-        console.log('❌ Erro ao conectar WebSocket:', error);
-        return Promise.resolve();
-    }
-}
-
-// Função para mostrar status da conexão
-function mostrarStatusConexao(status) {
-    const statusElement = document.getElementById('connection-status');
-    if (statusElement) {
-        statusElement.textContent = `📊 ${status.database} - ${status.totalContas} contas`;
-        statusElement.className = status.connected ? 'status-connected' : 'status-disconnected';
-    }
-}
-
-// Função para carregar dados do servidor
+// Funções de comunicação com o servidor
 async function carregarDados() {
     try {
         console.log('🔄 Carregando dados do servidor...');
+        console.log('🕐 Timestamp da requisição:', new Date().toISOString());
         
+        // Carregar contas do servidor
         const response = await fetch('/api/contas');
+        console.log('📡 Status da resposta:', response.status);
+        console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Verificar se a resposta tem o novo formato
-        if (data.contas) {
-            contas = data.contas;
-            console.log('✅ Dados carregados:', contas.length, 'contas');
-            console.log('📊 Status do servidor:', data.status);
+        if (response.ok) {
+            contas = await response.json();
+            console.log('📋 Contas carregadas do servidor:', contas.length);
             
-            // Atualizar status da conexão
-            if (data.status) {
-                connectionStatus.database = data.status.database;
-                mostrarStatusConexao(data.status);
+            // Log detalhado das contas carregadas
+            if (contas.length > 0) {
+                console.log('📋 Detalhes das contas carregadas:');
+                contas.forEach((conta, index) => {
+                    console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
+                });
             }
         } else {
-            // Formato antigo (array direto)
-            contas = data;
-            console.log('✅ Dados carregados (formato antigo):', contas.length, 'contas');
+            console.error('❌ Erro ao carregar contas:', response.status);
+            console.error('❌ Texto da resposta:', await response.text());
+            contas = [];
         }
         
-        // Log detalhado das contas
-        if (contas.length > 0) {
-            console.log('📋 Detalhes das contas carregadas:');
-            contas.forEach((conta, index) => {
-                console.log(`  ${index + 1}. ID: ${conta.id}, Descrição: ${conta.descricao}, Tipo: ${conta.tipo}, Paga: ${conta.paga}`);
-            });
+        // Carregar configuração de e-mail do localStorage (mantido local)
+        const emailSalvo = localStorage.getItem('familiaJamarEmail');
+        if (emailSalvo) {
+            try {
+                const dadosEmail = JSON.parse(emailSalvo);
+                if (dadosEmail && typeof dadosEmail === 'object') {
+                    emailConfigurado = dadosEmail;
+                    console.log('📧 E-mail carregado:', emailConfigurado.email);
+                } else {
+                    emailConfigurado = null;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao parsear dados de e-mail:', error);
+                emailConfigurado = null;
+            }
+        } else {
+            emailConfigurado = null;
         }
+        
+        console.log('✅ Carregamento de dados concluído');
         
     } catch (error) {
-        console.log('❌ Erro ao carregar dados:', error.message);
-        console.log('🔍 Stack trace:', error.stack);
+        console.error('❌ Erro ao carregar dados:', error);
+        console.error('🔍 Stack trace:', error.stack);
         contas = [];
-        mostrarMensagem('Erro ao carregar dados. Verifique sua conexão.', 'error');
+        emailConfigurado = null;
     }
 }
 
@@ -796,21 +650,17 @@ async function salvarConta(event) {
     event.preventDefault();
     
     try {
-        console.log('💾 Salvando nova conta...');
-        
         const formData = new FormData(event.target);
         const valor = parseFloat(formData.get('valor')) || 0;
         
         const novaConta = {
-            descricao: formData.get('descricao').trim(),
+            descricao: formData.get('descricao'),
             valor: valor,
             dataVencimento: formData.get('dataVencimento'),
             categoria: formData.get('categoria'),
             tipo: formData.get('tipo'),
             recorrente: formData.get('recorrente') === 'on'
         };
-        
-        console.log('📝 Dados da nova conta:', novaConta);
         
         // Enviar para o servidor
         const response = await fetch('/api/contas', {
@@ -821,84 +671,55 @@ async function salvarConta(event) {
             body: JSON.stringify(novaConta)
         });
         
-        console.log('📡 Status da resposta:', response.status);
-        
         if (response.ok) {
-            const data = await response.json();
+            const contaSalva = await response.json();
+            contas.push(contaSalva);
             
-            // Verificar formato da resposta
-            if (data.success && data.conta) {
-                console.log('✅ Conta salva com sucesso:', data.conta);
-                console.log('📊 Status do servidor:', data.status);
-                
-                // A conta já foi adicionada via WebSocket, então não precisamos adicionar novamente
-                // Apenas fechar o modal e mostrar mensagem
-                fecharModalNovaConta();
-                mostrarMensagem(`Conta "${data.conta.descricao}" adicionada com sucesso!`, 'success');
-                
-                // Simular notificação por e-mail
-                if (emailConfigurado) {
-                    simularNotificacaoEmail(data.conta);
-                }
-            } else if (data.id) {
-                // Formato antigo
-                console.log('✅ Conta salva (formato antigo):', data);
-                contas.push(data);
-                fecharModalNovaConta();
-                atualizarDashboard();
-                renderizarContas();
-                mostrarMensagem('Conta adicionada com sucesso!', 'success');
-            } else {
-                throw new Error('Formato de resposta inválido do servidor');
+            fecharModalNovaConta();
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta adicionada com sucesso!', 'success');
+            
+            // Simular notificação por e-mail
+            if (emailConfigurado) {
+                simularNotificacaoEmail(contaSalva);
             }
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.log('❌ Erro na resposta:', errorData);
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            throw new Error('Erro ao salvar conta no servidor');
         }
         
     } catch (error) {
         console.error('❌ Erro ao salvar conta:', error);
-        console.log('🔍 Stack trace:', error.stack);
-        mostrarMensagem(`Erro ao salvar conta: ${error.message}`, 'error');
+        mostrarMensagem('Erro ao salvar conta. Tente novamente.', 'error');
     }
 }
 
 async function editarConta(id) {
-    console.log('✏️ Editando conta ID:', id);
-    
     const conta = contas.find(c => c.id === id);
-    if (!conta) {
-        console.log('❌ Conta não encontrada:', id);
-        return;
-    }
+    if (!conta) return;
     
     document.getElementById('editId').value = conta.id;
     document.getElementById('editDescricao').value = conta.descricao;
     document.getElementById('editValor').value = conta.valor || 0;
     document.getElementById('editDataVencimento').value = conta.dataVencimento;
+    document.getElementById('editTipo').value = conta.tipo || 'conta';
     document.getElementById('editCategoria').value = conta.categoria;
-    document.getElementById('editTipo').value = conta.tipo;
     document.getElementById('editRecorrente').checked = conta.recorrente;
     
-    // Atualizar categorias baseado no tipo
-    atualizarCategoriasEdit();
-    
-    document.getElementById('modalEditarConta').style.display = 'block';
+    document.getElementById('modalEditarConta').style.display = 'flex';
 }
 
 async function atualizarConta(event) {
     event.preventDefault();
     
     try {
-        console.log('💾 Atualizando conta...');
-        
         const formData = new FormData(event.target);
         const id = parseInt(formData.get('id'));
         const valor = parseFloat(formData.get('valor')) || 0;
         
-        const contaAtualizada = {
-            descricao: formData.get('descricao').trim(),
+        const dadosAtualizados = {
+            descricao: formData.get('descricao'),
             valor: valor,
             dataVencimento: formData.get('dataVencimento'),
             categoria: formData.get('categoria'),
@@ -906,143 +727,109 @@ async function atualizarConta(event) {
             recorrente: formData.get('recorrente') === 'on'
         };
         
-        console.log('📝 Dados da conta atualizada:', contaAtualizada);
-        
         // Enviar para o servidor
         const response = await fetch(`/api/contas/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(contaAtualizada)
+            body: JSON.stringify(dadosAtualizados)
         });
         
-        console.log('📡 Status da resposta:', response.status);
-        
         if (response.ok) {
-            const data = await response.json();
+            const contaAtualizada = await response.json();
             
-            // Verificar formato da resposta
-            if (data.success && data.conta) {
-                console.log('✅ Conta atualizada com sucesso:', data.conta);
-                console.log('📊 Status do servidor:', data.status);
-                
-                // A conta já foi atualizada via WebSocket, então não precisamos atualizar novamente
-                // Apenas fechar o modal e mostrar mensagem
-                fecharModalEditarConta();
-                mostrarMensagem(`Conta "${data.conta.descricao}" atualizada com sucesso!`, 'success');
-            } else if (data.id) {
-                // Formato antigo
-                console.log('✅ Conta atualizada (formato antigo):', data);
-                const index = contas.findIndex(c => c.id === id);
-                if (index !== -1) {
-                    contas[index] = data;
-                }
-                fecharModalEditarConta();
-                atualizarDashboard();
-                renderizarContas();
-                mostrarMensagem('Conta atualizada com sucesso!', 'success');
-            } else {
-                throw new Error('Formato de resposta inválido do servidor');
+            // Atualizar na lista local
+            const contaIndex = contas.findIndex(c => c.id === id);
+            if (contaIndex !== -1) {
+                contas[contaIndex] = contaAtualizada;
             }
+            
+            fecharModalEditarConta();
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta atualizada com sucesso!', 'success');
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.log('❌ Erro na resposta:', errorData);
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            throw new Error('Erro ao atualizar conta no servidor');
         }
         
     } catch (error) {
         console.error('❌ Erro ao atualizar conta:', error);
-        console.log('🔍 Stack trace:', error.stack);
-        mostrarMensagem(`Erro ao atualizar conta: ${error.message}`, 'error');
+        mostrarMensagem('Erro ao atualizar conta. Tente novamente.', 'error');
     }
 }
 
 async function deletarConta(id) {
+    if (!confirm('Tem certeza que deseja deletar esta conta?')) return;
+    
     try {
-        console.log('🗑️ Deletando conta ID:', id);
-        
-        if (!confirm('Tem certeza que deseja deletar esta conta?')) {
-            return;
-        }
-        
+        // Enviar para o servidor
         const response = await fetch(`/api/contas/${id}`, {
             method: 'DELETE'
         });
         
-        console.log('📡 Status da resposta:', response.status);
-        
         if (response.ok) {
-            const data = await response.json();
+            // Remover da lista local
+            contas = contas.filter(c => c.id !== id);
             
-            // Verificar formato da resposta
-            if (data.success) {
-                console.log('✅ Conta deletada com sucesso');
-                console.log('📊 Status do servidor:', data.status);
-                
-                // A conta já foi removida via WebSocket, então não precisamos remover novamente
-                // Apenas mostrar mensagem
-                mostrarMensagem('Conta deletada com sucesso!', 'success');
-            } else {
-                throw new Error('Erro ao deletar conta no servidor');
-            }
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta deletada com sucesso!', 'success');
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.log('❌ Erro na resposta:', errorData);
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            throw new Error('Erro ao deletar conta no servidor');
         }
         
     } catch (error) {
         console.error('❌ Erro ao deletar conta:', error);
-        console.log('🔍 Stack trace:', error.stack);
-        mostrarMensagem(`Erro ao deletar conta: ${error.message}`, 'error');
+        mostrarMensagem('Erro ao deletar conta. Tente novamente.', 'error');
     }
 }
 
 async function marcarComoPaga(id) {
     try {
-        console.log('💳 Marcando conta como paga ID:', id);
+        // Verificações básicas
+        if (!id || !Array.isArray(contas)) {
+            mostrarMensagem('Erro: Dados inválidos', 'error');
+            return;
+        }
         
+        // Encontrar a conta
+        const contaIndex = contas.findIndex(c => c && c.id === id);
+        if (contaIndex === -1) {
+            mostrarMensagem('Conta não encontrada', 'error');
+            return;
+        }
+        
+        // Verificar se já está paga
+        if (contas[contaIndex].paga === true) {
+            mostrarMensagem('Esta conta já está marcada como paga!', 'info');
+            return;
+        }
+        
+        // Enviar para o servidor
         const response = await fetch(`/api/contas/${id}/pagar`, {
             method: 'PATCH'
         });
         
-        console.log('📡 Status da resposta:', response.status);
-        
         if (response.ok) {
-            const data = await response.json();
+            const contaAtualizada = await response.json();
             
-            // Verificar formato da resposta
-            if (data.success && data.conta) {
-                console.log('✅ Conta marcada como paga:', data.conta);
-                console.log('📊 Status do servidor:', data.status);
-                
-                // A conta já foi atualizada via WebSocket, então não precisamos atualizar novamente
-                // Apenas mostrar mensagem
-                mostrarMensagem(`Conta "${data.conta.descricao}" marcada como paga!`, 'success');
-            } else if (data.id) {
-                // Formato antigo
-                console.log('✅ Conta marcada como paga (formato antigo):', data);
-                const index = contas.findIndex(c => c.id === id);
-                if (index !== -1) {
-                    contas[index] = data;
-                }
-                atualizarDashboard();
-                renderizarContas();
-                mostrarMensagem('Conta marcada como paga!', 'success');
-            } else {
-                throw new Error('Formato de resposta inválido do servidor');
-            }
+            // Atualizar na lista local
+            contas[contaIndex] = contaAtualizada;
+            
+            atualizarDashboard();
+            renderizarContas();
+            
+            mostrarMensagem('Conta marcada como paga com sucesso!', 'success');
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.log('❌ Erro na resposta:', errorData);
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            throw new Error('Erro ao marcar conta como paga no servidor');
         }
         
     } catch (error) {
-        console.error('❌ Erro ao marcar conta como paga:', error);
-        console.log('🔍 Stack trace:', error.stack);
-        mostrarMensagem(`Erro ao marcar conta como paga: ${error.message}`, 'error');
+        console.error('❌ Erro ao marcar como paga:', error);
+        mostrarMensagem('Erro ao processar pagamento. Tente novamente.', 'error');
     }
 }
 

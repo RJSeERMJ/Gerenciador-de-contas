@@ -8,7 +8,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <script src="/socket.io/socket.io.js"></script>
     <style>
         .form-help {
             display: block;
@@ -160,28 +159,6 @@
             color: #718096;
             font-style: italic;
         }
-        
-        /* Estilos para status da conexão */
-        .connection-status {
-            margin-right: 15px;
-        }
-        
-        .connection-status span {
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-weight: 500;
-        }
-        
-        .status-connected {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .status-disconnected {
-            background: #f56565;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -191,9 +168,6 @@
             <div class="header-content">
                 <h1><i class="fas fa-home"></i> Família Jamar</h1>
                 <div class="header-actions">
-                    <div class="connection-status">
-                        <span id="connection-status" class="status-connected">📊 Conectando...</span>
-                    </div>
                     <div class="user-info">
                         <span id="userDisplay">Olá, <span id="username"></span></span>
                         <button class="btn btn-logout" onclick="fazerLogout()">
