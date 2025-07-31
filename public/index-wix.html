@@ -94,6 +94,49 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
             outline: none;
         }
+        
+        /* Estilos para diferenciar contas e receitas */
+        .conta-item.receita {
+            border-left: 4px solid #38a169;
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+        }
+        
+        .conta-item.conta {
+            border-left: 4px solid #e53e3e;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        }
+        
+        .tipo-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+        
+        .valor-positivo {
+            color: #38a169;
+            font-weight: bold;
+        }
+        
+        .valor-negativo {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        
+        /* Estilos para o dashboard com receitas */
+        .dashboard-item.receitas {
+            background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+            color: white;
+        }
+        
+        .dashboard-item.saldo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -220,6 +263,24 @@
                         <div class="stat-content">
                             <h3 id="totalPendente">R$ 0,00</h3>
                             <p>Total Pendente</p>
+                        </div>
+                    </div>
+                    <div class="stat-card receitas">
+                        <div class="stat-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalReceitas">R$ 0,00</h3>
+                            <p>Total Receitas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card saldo">
+                        <div class="stat-icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="saldo">R$ 0,00</h3>
+                            <p>Saldo</p>
                         </div>
                     </div>
                 </div>

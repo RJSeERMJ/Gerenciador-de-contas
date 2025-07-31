@@ -155,20 +155,36 @@ function mostrarAba(aba) {
 function atualizarDashboard() {
     try {
         const hoje = new Date();
-        const contasPendentes = contas.filter(conta => !conta.paga);
-        const contasVencidas = contas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
-        const contasPagas = contas.filter(conta => conta.paga);
-        const totalPendente = contasPendentes.reduce((total, conta) => {
+        
+        // Separar contas e receitas
+        const contasDespesas = contas.filter(conta => conta.tipo === 'conta');
+        const receitas = contas.filter(conta => conta.tipo === 'receita');
+        
+        // Calcular totais por tipo
+        const contasPendentes = contasDespesas.filter(conta => !conta.paga);
+        const contasVencidas = contasDespesas.filter(conta => !conta.paga && new Date(conta.dataVencimento) < hoje);
+        const contasPagas = contasDespesas.filter(conta => conta.paga);
+        
+        const totalDespesasPendentes = contasPendentes.reduce((total, conta) => {
             const valor = parseFloat(conta.valor) || 0;
             return total + valor;
         }, 0);
+        
+        const totalReceitas = receitas.reduce((total, conta) => {
+            const valor = parseFloat(conta.valor) || 0;
+            return total + valor;
+        }, 0);
+        
+        const saldo = totalReceitas - totalDespesasPendentes;
         
         // Atualizar elementos do dashboard com verificações de segurança
         const elementos = {
             'contasPendentes': contasPendentes.length,
             'contasVencidas': contasVencidas.length,
             'contasPagas': contasPagas.length,
-            'totalPendente': formatarMoeda(totalPendente)
+            'totalPendente': formatarMoeda(totalDespesasPendentes),
+            'totalReceitas': formatarMoeda(totalReceitas),
+            'saldo': formatarMoeda(saldo)
         };
         
         Object.entries(elementos).forEach(([id, valor]) => {
@@ -193,49 +209,90 @@ function atualizarGraficos() {
     const graficoCategoria = document.getElementById('graficoCategoria');
     const graficoEvolucao = document.getElementById('graficoEvolucao');
     
-    // Estatísticas por categoria
-    const categorias = {};
+    // Estatísticas por categoria (separando contas e receitas)
+    const categoriasContas = {};
+    const categoriasReceitas = {};
+    
     contas.forEach(conta => {
-        if (!categorias[conta.categoria]) {
-            categorias[conta.categoria] = { count: 0, total: 0 };
+        if (conta.tipo === 'conta') {
+            if (!categoriasContas[conta.categoria]) {
+                categoriasContas[conta.categoria] = { count: 0, total: 0 };
+            }
+            categoriasContas[conta.categoria].count++;
+            categoriasContas[conta.categoria].total += parseFloat(conta.valor);
+        } else if (conta.tipo === 'receita') {
+            if (!categoriasReceitas[conta.categoria]) {
+                categoriasReceitas[conta.categoria] = { count: 0, total: 0 };
+            }
+            categoriasReceitas[conta.categoria].count++;
+            categoriasReceitas[conta.categoria].total += parseFloat(conta.valor);
         }
-        categorias[conta.categoria].count++;
-        categorias[conta.categoria].total += parseFloat(conta.valor);
     });
     
-    const categoriaHTML = Object.entries(categorias)
+    const contasHTML = Object.entries(categoriasContas)
         .map(([categoria, dados]) => `
-            <div style="margin: 10px 0; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
-                <strong>${categoria}</strong><br>
+            <div style="margin: 8px 0; padding: 10px; background: rgba(229, 62, 62, 0.1); border-radius: 8px; border-left: 3px solid #e53e3e;">
+                <strong style="color: #e53e3e;">${categoria}</strong><br>
                 Contas: ${dados.count} | Total: ${formatarMoeda(dados.total)}
+            </div>
+        `).join('');
+    
+    const receitasHTML = Object.entries(categoriasReceitas)
+        .map(([categoria, dados]) => `
+            <div style="margin: 8px 0; padding: 10px; background: rgba(56, 161, 105, 0.1); border-radius: 8px; border-left: 3px solid #38a169;">
+                <strong style="color: #38a169;">${categoria}</strong><br>
+                Receitas: ${dados.count} | Total: ${formatarMoeda(dados.total)}
             </div>
         `).join('');
     
     graficoCategoria.innerHTML = `
         <div style="text-align: left;">
             <h4 style="margin-bottom: 15px; color: #2d3748;">Distribuição por Categoria</h4>
-            ${categoriaHTML || '<p style="color: #718096;">Nenhuma conta cadastrada</p>'}
+            ${contasHTML || receitasHTML ? `
+                <div style="margin-bottom: 20px;">
+                    <h5 style="color: #e53e3e; margin-bottom: 10px;">📊 Contas (Despesas)</h5>
+                    ${contasHTML || '<p style="color: #718096; font-style: italic;">Nenhuma conta cadastrada</p>'}
+                </div>
+                <div>
+                    <h5 style="color: #38a169; margin-bottom: 10px;">💰 Receitas</h5>
+                    ${receitasHTML || '<p style="color: #718096; font-style: italic;">Nenhuma receita cadastrada</p>'}
+                </div>
+            ` : '<p style="color: #718096;">Nenhuma entrada cadastrada</p>'}
         </div>
     `;
     
-    // Estatísticas de evolução (últimos 6 meses)
+    // Estatísticas de evolução (últimos 6 meses) - separando contas e receitas
     const hoje = new Date();
     const meses = [];
     for (let i = 5; i >= 0; i--) {
         const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const contasMes = contas.filter(conta => {
+            const dataConta = new Date(conta.dataVencimento);
+            return dataConta.getMonth() === mes.getMonth() && 
+                   dataConta.getFullYear() === mes.getFullYear() &&
+                   conta.tipo === 'conta';
+        });
+        const receitasMes = contas.filter(conta => {
+            const dataConta = new Date(conta.dataVencimento);
+            return dataConta.getMonth() === mes.getMonth() && 
+                   dataConta.getFullYear() === mes.getFullYear() &&
+                   conta.tipo === 'receita';
+        });
+        
         meses.push({
             mes: mes.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-            contas: contas.filter(conta => {
-                const dataConta = new Date(conta.dataVencimento);
-                return dataConta.getMonth() === mes.getMonth() && 
-                       dataConta.getFullYear() === mes.getFullYear();
-            }).length
+            contas: contasMes.length,
+            receitas: receitasMes.length,
+            totalContas: contasMes.reduce((total, conta) => total + (parseFloat(conta.valor) || 0), 0),
+            totalReceitas: receitasMes.reduce((total, conta) => total + (parseFloat(conta.valor) || 0), 0)
         });
     }
     
     const evolucaoHTML = meses.map(item => `
-        <div style="margin: 10px 0; padding: 10px; background: rgba(56, 161, 105, 0.1); border-radius: 8px;">
-            <strong>${item.mes}</strong>: ${item.contas} contas
+        <div style="margin: 10px 0; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+            <strong>${item.mes}</strong><br>
+            <span style="color: #e53e3e;">📊 Contas: ${item.contas} (${formatarMoeda(item.totalContas)})</span><br>
+            <span style="color: #38a169;">💰 Receitas: ${item.receitas} (${formatarMoeda(item.totalReceitas)})</span>
         </div>
     `).join('');
     
@@ -259,7 +316,7 @@ function renderizarContas() {
         const filtroCategoria = document.getElementById('filtroCategoria')?.value || '';
         const busca = document.getElementById('busca')?.value?.toLowerCase() || '';
         
-        let contasFiltradas = contas.filter(conta => conta.tipo === 'conta'); // Mostrar apenas contas
+        let contasFiltradas = contas; // Mostrar todas as entradas (contas e receitas)
         
         // Filtrar por status
         if (filtroStatus === 'pendentes') {
@@ -343,13 +400,24 @@ function criarCardConta(conta) {
             statusText = `Vence em ${diasAteVencimento} dias`;
         }
         
+        // Determinar se é conta ou receita
+        const isReceita = conta.tipo === 'receita';
+        const tipoClass = isReceita ? 'receita' : 'conta';
+        const tipoIcon = isReceita ? 'fas fa-plus-circle' : 'fas fa-minus-circle';
+        const tipoText = isReceita ? 'Receita' : 'Conta';
+        const valorClass = isReceita ? 'valor-positivo' : 'valor-negativo';
+        
         return `
-            <div class="conta-item ${statusClass}">
+            <div class="conta-item ${statusClass} ${tipoClass}">
                 <div class="conta-header">
                     <div class="conta-info">
-                        <h3>${conta.descricao}</h3>
+                        <h3>
+                            <i class="${tipoIcon}" style="color: ${isReceita ? '#38a169' : '#e53e3e'}; margin-right: 8px;"></i>
+                            ${conta.descricao}
+                            <span class="tipo-badge">${tipoText}</span>
+                        </h3>
                         <div class="conta-meta">
-                            <span><i class="fas fa-dollar-sign"></i> ${formatarMoeda(conta.valor || 0)}</span>
+                            <span class="${valorClass}"><i class="fas fa-dollar-sign"></i> ${formatarMoeda(conta.valor || 0)}</span>
                             <span><i class="fas fa-tag"></i> ${conta.categoria || 'Sem categoria'}</span>
                             <span><i class="${statusIcon}"></i> ${statusText}</span>
                             ${conta.recorrente ? '<span><i class="fas fa-redo"></i> Recorrente</span>' : ''}
@@ -357,7 +425,7 @@ function criarCardConta(conta) {
                     </div>
                 </div>
                 <div class="conta-actions">
-                    ${conta.paga !== true ? `
+                    ${conta.paga !== true && !isReceita ? `
                         <button class="btn btn-success" onclick="marcarComoPaga(${conta.id})">
                             <i class="fas fa-check"></i> Pagar
                         </button>
