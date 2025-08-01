@@ -306,7 +306,7 @@ async function verificarContasVencendo() {
     }
 }
 
-// Verificar contas periodicamente
+// Verificar contas periodicamente (só funciona localmente)
 setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000); // 6 horas
 
 // Rotas da API
@@ -493,6 +493,33 @@ app.post('/api/configurar-email', async (req, res) => {
     }
 });
 
+// NOVA ROTA: Verificação manual de notificações (para UptimeRobot)
+app.post('/api/verificar-notificacoes', async (req, res) => {
+    try {
+        console.log('🔍 Verificação manual de notificações iniciada');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        // Executar verificação
+        await verificarContasVencendo();
+        
+        console.log('✅ Verificação manual concluída');
+        
+        res.json({ 
+            success: true, 
+            message: 'Verificação de notificações executada',
+            timestamp: new Date().toISOString(),
+            emailConfigurado: !!emailConfigurado,
+            totalContas: contas.length
+        });
+    } catch (error) {
+        console.log('❌ Erro na verificação:', error.message);
+        res.status(500).json({ 
+            error: 'Erro interno',
+            message: error.message 
+        });
+    }
+});
+
 // Função para enviar relatório completo
 async function enviarRelatorioCompleto(email) {
     try {
@@ -612,6 +639,7 @@ async function inicializarSistema() {
             console.log('🔍 Verificando se dados foram carregados...');
             console.log('📊 Contas na memória:', contas.length);
             console.log('🆔 Próximo ID:', nextId);
+            console.log('📧 Nova rota: POST /api/verificar-notificacoes');
         });
         
     } catch (error) {
