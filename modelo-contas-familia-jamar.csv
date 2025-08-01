@@ -1,9 +1,0 @@
-ID,Descrição,Valor,Data de Vencimento,Categoria,Tipo,Recorrente,Paga,Data de Criação,Data de Pagamento
-1,Conta de Luz,150.00,2024-01-15,Energia,conta,Sim,Não,2024-01-01,
-2,Salário,3000.00,2024-01-05,Trabalho,receita,Sim,Sim,2024-01-01,2024-01-05
-3,Internet,89.90,2024-01-20,Serviços,conta,Sim,Não,2024-01-01,
-4,Freelance,500.00,2024-01-10,Trabalho,receita,Não,Sim,2024-01-01,2024-01-10
-5,Água,45.50,2024-01-25,Água,conta,Sim,Não,2024-01-01,
-6,Aluguel,800.00,2024-01-10,Moradia,conta,Sim,Não,2024-01-01,
-7,Bônus,1000.00,2024-01-15,Trabalho,receita,Não,Não,2024-01-01,
-8,Supermercado,350.00,2024-01-08,Alimentação,conta,Não,Sim,2024-01-01,2024-01-08 
