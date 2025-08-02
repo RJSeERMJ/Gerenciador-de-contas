@@ -817,6 +817,46 @@ app.post('/api/verificar-notificacoes', async (req, res) => {
     }
 });
 
+// ROTA: Verificação manual de notificações via GET (para UptimeRobot)
+app.get('/api/verificar-notificacoes', async (req, res) => {
+    try {
+        console.log('🔍 Verificação manual de notificações (GET) iniciada');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        console.log('🌐 Ambiente:', process.env.NODE_ENV || 'development');
+        
+        // Verificar se há e-mail configurado
+        if (!emailConfigurado) {
+            console.log('📧 E-mail não configurado - pulando verificação');
+            return res.json({ 
+                success: true, 
+                message: 'E-mail não configurado - verificação pulada',
+                timestamp: new Date().toISOString(),
+                emailConfigurado: false,
+                totalContas: contas.length
+            });
+        }
+        
+        // Executar verificação
+        await verificarContasVencendo();
+        
+        console.log('✅ Verificação manual (GET) concluída');
+        
+        res.json({ 
+            success: true, 
+            message: 'Verificação de notificações executada via GET',
+            timestamp: new Date().toISOString(),
+            emailConfigurado: !!emailConfigurado,
+            totalContas: contas.length
+        });
+    } catch (error) {
+        console.log('❌ Erro na verificação (GET):', error.message);
+        res.status(500).json({ 
+            error: 'Erro interno',
+            message: error.message 
+        });
+    }
+});
+
 // Função para enviar relatório completo
 async function enviarRelatorioCompleto(email) {
     try {
@@ -905,6 +945,38 @@ async function enviarRelatorioCompleto(email) {
         console.log('❌ Erro ao enviar relatório completo:', error.message);
     }
 }
+
+// Rota GET simples para UptimeRobot (dispara notificações)
+app.get('/api/ping', async (req, res) => {
+    try {
+        console.log('🏓 Ping recebido do UptimeRobot');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        // Executar verificação de notificações em background
+        if (emailConfigurado) {
+            console.log('📧 E-mail configurado - executando verificação');
+            verificarContasVencendo().catch(error => {
+                console.log('❌ Erro na verificação em background:', error.message);
+            });
+        } else {
+            console.log('📧 E-mail não configurado - pulando verificação');
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Ping recebido - Sistema Família Jamar',
+            timestamp: new Date().toISOString(),
+            emailConfigurado: !!emailConfigurado,
+            totalContas: contas.length
+        });
+    } catch (error) {
+        console.log('❌ Erro no ping:', error.message);
+        res.status(500).json({ 
+            error: 'Erro interno',
+            message: error.message 
+        });
+    }
+});
 
 // Rota principal
 app.get('/', (req, res) => {
