@@ -143,22 +143,66 @@ async function salvarDados() {
         console.log('💾 Salvando dados...');
         console.log('📊 Total de contas para salvar:', contas.length);
         console.log('🆔 Próximo ID:', nextId);
+        console.log('🌐 Ambiente:', process.env.NODE_ENV || 'development');
         
         // Tentar salvar no MongoDB Atlas
         if (db) {
             try {
+                console.log('🗄️ Conectando ao MongoDB Atlas...');
                 const collection = db.collection(COLLECTION_NAME);
                 
-                // Limpar coleção e inserir todas as contas
-                await collection.deleteMany({});
+                // Verificar se a conexão ainda está ativa (com timeout)
+                const pingPromise = db.admin().ping();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 5000)
+                );
+                
+                await Promise.race([pingPromise, timeoutPromise]);
+                console.log('✅ Conexão com MongoDB ativa');
+                
+                // Limpar coleção e inserir todas as contas (com timeout)
+                console.log('🧹 Limpando coleção...');
+                const deletePromise = collection.deleteMany({});
+                const deleteTimeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Delete timeout')), 10000)
+                );
+                const deleteResult = await Promise.race([deletePromise, deleteTimeout]);
+                console.log('🗑️ Documentos removidos:', deleteResult.deletedCount);
+                
                 if (contas.length > 0) {
-                    await collection.insertMany(contas);
+                    console.log('📝 Inserindo contas no MongoDB...');
+                    const insertPromise = collection.insertMany(contas);
+                    const insertTimeout = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Insert timeout')), 15000)
+                    );
+                    const insertResult = await Promise.race([insertPromise, insertTimeout]);
+                    console.log('✅ Contas inseridas:', insertResult.insertedCount);
+                } else {
+                    console.log('📝 Nenhuma conta para inserir');
                 }
                 
-                console.log('✅ Dados salvos no MongoDB Atlas');
+                console.log('✅ Dados salvos no MongoDB Atlas com sucesso');
             } catch (error) {
                 console.log('❌ Erro ao salvar no MongoDB:', error.message);
+                console.log('🔍 Stack trace:', error.stack);
+                
+                // Tentar reconectar se houver erro de conexão
+                if (error.message.includes('connection') || error.message.includes('timeout')) {
+                    console.log('🔄 Tentando reconectar ao MongoDB...');
+                    try {
+                        const reconnectPromise = client.connect();
+                        const reconnectTimeout = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Reconnect timeout')), 5000)
+                        );
+                        await Promise.race([reconnectPromise, reconnectTimeout]);
+                        console.log('✅ Reconectado ao MongoDB');
+                    } catch (reconnectError) {
+                        console.log('❌ Erro ao reconectar:', reconnectError.message);
+                    }
+                }
             }
+        } else {
+            console.log('⚠️ MongoDB não disponível, salvando apenas localmente');
         }
         
         // Sempre salvar backup no JSON local
@@ -166,6 +210,7 @@ async function salvarDados() {
         
     } catch (error) {
         console.log('❌ Erro ao salvar dados:', error.message);
+        console.log('🔍 Stack trace:', error.stack);
     }
 }
 
@@ -379,19 +424,67 @@ app.put('/api/contas/:id', async (req, res) => {
 
 app.delete('/api/contas/:id', async (req, res) => {
     try {
+        console.log('🗑️ DELETE /api/contas/:id - Deletando conta');
+        console.log('🌐 Ambiente:', process.env.NODE_ENV || 'development');
         const id = parseInt(req.params.id);
+        console.log('🆔 ID da conta a ser deletada:', id);
+        console.log('📊 Total de contas antes da exclusão:', contas.length);
+        
         const index = contas.findIndex(conta => conta.id === id);
+        console.log('🔍 Índice da conta encontrada:', index);
         
         if (index !== -1) {
+            const contaDeletada = contas[index];
+            console.log('📋 Conta que será deletada:', {
+                id: contaDeletada.id,
+                descricao: contaDeletada.descricao,
+                valor: contaDeletada.valor
+            });
+            
+            // Remover da lista
             contas.splice(index, 1);
-            await salvarDados();
-            res.json({ success: true });
+            console.log('✅ Conta removida da lista local');
+            console.log('📊 Total de contas após remoção:', contas.length);
+            
+            // Salvar no banco de dados com timeout
+            console.log('💾 Salvando alterações no banco de dados...');
+            const savePromise = salvarDados();
+            const saveTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Save timeout')), 20000)
+            );
+            
+            await Promise.race([savePromise, saveTimeout]);
+            console.log('✅ Alterações salvas com sucesso');
+            
+            res.json({ 
+                success: true, 
+                message: 'Conta deletada com sucesso',
+                contaDeletada: {
+                    id: contaDeletada.id,
+                    descricao: contaDeletada.descricao
+                },
+                ambiente: process.env.NODE_ENV || 'development'
+            });
         } else {
+            console.log('❌ Conta não encontrada com ID:', id);
             res.status(404).json({ error: 'Conta não encontrada' });
         }
     } catch (error) {
         console.log('❌ Erro ao deletar conta:', error.message);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.log('🔍 Stack trace:', error.stack);
+        
+        // Retornar erro mais específico
+        if (error.message.includes('timeout')) {
+            res.status(408).json({ 
+                error: 'Timeout ao salvar no banco de dados',
+                message: 'A operação demorou muito para completar. Tente novamente.'
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Erro interno do servidor',
+                message: error.message
+            });
+        }
     }
 });
 
@@ -537,6 +630,41 @@ app.get('/api/email-status', (req, res) => {
     }
 });
 
+// Rota para verificar status do banco de dados
+app.get('/api/db-status', async (req, res) => {
+    try {
+        let mongoStatus = 'disconnected';
+        let mongoCount = 0;
+        
+        if (db) {
+            try {
+                // Verificar conexão
+                await db.admin().ping();
+                mongoStatus = 'connected';
+                
+                // Contar documentos
+                const collection = db.collection(COLLECTION_NAME);
+                mongoCount = await collection.countDocuments();
+            } catch (error) {
+                mongoStatus = 'error';
+                console.log('❌ Erro ao verificar MongoDB:', error.message);
+            }
+        }
+        
+        res.json({
+            ambiente: process.env.NODE_ENV || 'development',
+            mongoStatus,
+            mongoCount,
+            localCount: contas.length,
+            nextId,
+            emailConfigurado: !!emailConfigurado
+        });
+    } catch (error) {
+        console.log('❌ Erro ao verificar status do banco:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 // Rota para testar envio de e-mail
 app.post('/api/testar-email', async (req, res) => {
     try {
@@ -579,6 +707,49 @@ app.post('/api/testar-email', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Rota para testar exclusão no Vercel
+app.post('/api/testar-exclusao', async (req, res) => {
+    try {
+        console.log('🧪 Testando exclusão no Vercel...');
+        console.log('🌐 Ambiente:', process.env.NODE_ENV || 'development');
+        
+        // Verificar status inicial
+        const statusInicial = {
+            totalContas: contas.length,
+            mongoStatus: db ? 'connected' : 'disconnected',
+            ambiente: process.env.NODE_ENV || 'development'
+        };
+        
+        console.log('📊 Status inicial:', statusInicial);
+        
+        // Tentar salvar dados (simular exclusão)
+        console.log('💾 Testando salvamento no banco...');
+        const savePromise = salvarDados();
+        const saveTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Save timeout')), 20000)
+        );
+        
+        await Promise.race([savePromise, saveTimeout]);
+        console.log('✅ Salvamento testado com sucesso');
+        
+        res.json({
+            success: true,
+            message: 'Teste de exclusão realizado com sucesso',
+            statusInicial,
+            ambiente: process.env.NODE_ENV || 'development'
+        });
+        
+    } catch (error) {
+        console.log('❌ Erro no teste de exclusão:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Erro no teste de exclusão',
+            message: error.message,
+            ambiente: process.env.NODE_ENV || 'development'
         });
     }
 });
