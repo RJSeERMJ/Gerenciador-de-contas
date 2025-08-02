@@ -116,9 +116,14 @@ function carregarDadosLocais() {
             const dadosConfig = fs.readFileSync(ARQUIVO_CONFIG, 'utf8');
             const config = JSON.parse(dadosConfig);
             nextId = config.nextId || 1;
+            emailConfigurado = config.emailConfigurado || null;
             console.log('✅ Configuração carregada do JSON local');
+            if (emailConfigurado) {
+                console.log('📧 E-mail configurado:', emailConfigurado);
+            }
         } else {
             nextId = 1;
+            emailConfigurado = null;
             console.log('📝 Arquivo de configuração não encontrado, inicializando com ID 1');
         }
         
@@ -128,6 +133,7 @@ function carregarDadosLocais() {
         console.log('❌ Erro ao carregar dados locais:', error.message);
         contas = [];
         nextId = 1;
+        emailConfigurado = null;
     }
 }
 
@@ -176,7 +182,11 @@ function salvarDadosLocais() {
         fs.writeFileSync(ARQUIVO_DADOS, JSON.stringify(contas, null, 2));
         
         // Salvar configuração
-        const config = { nextId, ultimaAtualizacao: new Date().toISOString() };
+        const config = { 
+            nextId, 
+            emailConfigurado,
+            ultimaAtualizacao: new Date().toISOString() 
+        };
         fs.writeFileSync(ARQUIVO_CONFIG, JSON.stringify(config, null, 2));
         
         console.log('✅ Backup salvo no JSON local');
@@ -307,7 +317,13 @@ async function verificarContasVencendo() {
 }
 
 // Verificar contas periodicamente (só funciona localmente)
-setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000); // 6 horas
+// No Vercel, usar POST /api/verificar-notificacoes para verificação manual
+if (process.env.NODE_ENV !== 'production') {
+    setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000); // 6 horas
+    console.log('🔄 Verificação automática ativada (modo local)');
+} else {
+    console.log('📧 Modo produção: usar POST /api/verificar-notificacoes para verificação manual');
+}
 
 // Rotas da API
 app.get('/api/contas', (req, res) => {
@@ -469,6 +485,9 @@ app.post('/api/configurar-email', async (req, res) => {
         if (sucesso) {
             emailConfigurado = email;
             
+            // Salvar configuração no servidor
+            await salvarDados();
+            
             // Enviar relatório completo se houver contas
             if (contas.length > 0) {
                 await enviarRelatorioCompleto(email);
@@ -493,11 +512,95 @@ app.post('/api/configurar-email', async (req, res) => {
     }
 });
 
-// NOVA ROTA: Verificação manual de notificações (para UptimeRobot)
+// Rota para verificar status do e-mail
+app.get('/api/email-status', (req, res) => {
+    try {
+        res.json({
+            emailConfigurado: !!emailConfigurado,
+            email: emailConfigurado,
+            totalContas: contas.length,
+            contasVencidas: contas.filter(conta => 
+                !conta.paga && new Date(conta.dataVencimento) < new Date()
+            ).length,
+            contasVencendo: contas.filter(conta => {
+                if (conta.paga) return false;
+                const hoje = new Date();
+                const proximos3Dias = new Date();
+                proximos3Dias.setDate(hoje.getDate() + 3);
+                const dataVencimento = new Date(conta.dataVencimento);
+                return dataVencimento >= hoje && dataVencimento <= proximos3Dias;
+            }).length
+        });
+    } catch (error) {
+        console.log('❌ Erro ao verificar status do e-mail:', error.message);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Rota para testar envio de e-mail
+app.post('/api/testar-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'E-mail é obrigatório' 
+            });
+        }
+        
+        const assunto = '🧪 Teste de E-mail - Sistema Família Jamar';
+        const conteudo = `
+            <h2>🧪 Teste de E-mail</h2>
+            <p>Olá! Este é um e-mail de teste do Sistema Família Jamar.</p>
+            <p>Se você recebeu este e-mail, significa que as notificações estão funcionando corretamente!</p>
+            <br>
+            <p><strong>E-mail de teste:</strong> ${email}</p>
+            <p><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        const sucesso = await enviarEmail(email, assunto, conteudo);
+        
+        if (sucesso) {
+            res.json({ 
+                success: true, 
+                message: 'E-mail de teste enviado com sucesso!' 
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Erro ao enviar e-mail de teste.' 
+            });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao testar e-mail:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// ROTA: Verificação manual de notificações (para UptimeRobot/Vercel)
 app.post('/api/verificar-notificacoes', async (req, res) => {
     try {
         console.log('🔍 Verificação manual de notificações iniciada');
         console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        console.log('🌐 Ambiente:', process.env.NODE_ENV || 'development');
+        
+        // Verificar se há e-mail configurado
+        if (!emailConfigurado) {
+            console.log('📧 E-mail não configurado - pulando verificação');
+            return res.json({ 
+                success: true, 
+                message: 'E-mail não configurado - verificação pulada',
+                timestamp: new Date().toISOString(),
+                emailConfigurado: false,
+                totalContas: contas.length
+            });
+        }
         
         // Executar verificação
         await verificarContasVencendo();

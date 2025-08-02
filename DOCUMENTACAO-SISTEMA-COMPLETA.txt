@@ -1,0 +1,534 @@
+===============================================================================
+                    DOCUMENTAÇÃO COMPLETA DO SISTEMA FAMÍLIA JAMAR
+===============================================================================
+
+📅 Data: Janeiro 2025
+🔄 Versão: 1.0.0
+👨‍💻 Desenvolvedor: Sistema de Controle Financeiro Familiar
+🌐 Deploy: Vercel + MongoDB Atlas
+
+===============================================================================
+                                ÍNDICE
+===============================================================================
+
+1. ARQUITETURA GERAL
+2. BACKEND (server-web.js)
+3. FRONTEND (Interface)
+4. BANCO DE DADOS
+5. DEPLOY (Vercel)
+6. SISTEMA DE NOTIFICAÇÕES
+7. SEGURANÇA E CONFIABILIDADE
+8. FUNCIONALIDADES PRINCIPAIS
+9. VANTAGENS DO SISTEMA
+10. ESTRUTURA DE ARQUIVOS
+11. CONFIGURAÇÕES
+12. TROUBLESHOOTING
+
+===============================================================================
+                           1. ARQUITETURA GERAL
+===============================================================================
+
+🏗️ ESTRUTURA DO SISTEMA:
+
+Sistema Família Jamar
+├── Backend (Node.js + Express)
+│   ├── server-web.js (servidor principal)
+│   ├── MongoDB Atlas (banco de dados)
+│   └── JSON local (fallback)
+├── Frontend (HTML/CSS/JavaScript)
+│   ├── Interface responsiva
+│   ├── Dashboard interativo
+│   └── Sistema de notificações
+└── Deploy (Vercel)
+    ├── Configuração serverless
+    └── Integração contínua
+
+🔧 TECNOLOGIAS UTILIZADAS:
+
+Backend:
+- Node.js (Runtime JavaScript)
+- Express (Framework web)
+- MongoDB Atlas (Banco de dados)
+- Nodemailer (Sistema de e-mails)
+- Moment.js (Manipulação de datas)
+- CORS (Permissões de acesso)
+- Body-parser (Processamento de dados)
+
+Frontend:
+- HTML5 (Estrutura)
+- CSS3 (Estilos responsivos)
+- JavaScript ES6+ (Lógica)
+- Chart.js (Gráficos)
+- Font Awesome (Ícones)
+- Google Fonts (Tipografia)
+
+Deploy:
+- Vercel (Hospedagem serverless)
+- GitHub (Controle de versão)
+- UptimeRobot (Monitoramento)
+
+===============================================================================
+                           2. BACKEND (server-web.js)
+===============================================================================
+
+⚙️ DEPENDÊNCIAS PRINCIPAIS:
+
+{
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "moment": "^2.29.4",
+    "mongodb": "^5.9.2",
+    "nodemailer": "^6.9.7"
+  }
+}
+
+🗄️ SISTEMA DE BANCO DE DADOS:
+
+MongoDB Atlas (Principal):
+- URI: mongodb+srv://jamarestudo:A91L9XOUYiCaHetq@familiajamar.wu9knb3.mongodb.net/familia-jamar
+- Função: Armazenamento persistente
+- Vantagem: Acessível de qualquer lugar
+- Fallback: JSON local se falhar
+
+JSON Local (Fallback):
+- Arquivo: database/contas.json
+- Função: Backup local
+- Uso: Quando MongoDB não está disponível
+- Limitação: Não persiste no Vercel
+
+🔔 SISTEMA DE NOTIFICAÇÕES:
+
+Configuração SMTP:
+{
+    gmail: {
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+            user: 'jamarestudo@gmail.com',
+            pass: process.env.EMAIL_PASSWORD || 'mekz ihei gvuz fkgb'
+        }
+    }
+}
+
+Tipos de Notificação:
+1. Contas Vencendo: Próximos 7 dias
+2. Contas Vencidas: Atrasadas
+3. Relatório Completo: Todas as contas
+
+🔄 APIs PRINCIPAIS:
+
+CRUD de Contas:
+- GET /api/contas - Listar contas
+- POST /api/contas - Criar conta
+- PUT /api/contas/:id - Atualizar conta
+- DELETE /api/contas/:id - Deletar conta
+
+Notificações:
+- POST /api/verificar-notificacoes - Trigger manual
+- POST /api/enviar-email - Envio de e-mail
+- POST /api/relatorio-completo - Relatório completo
+
+===============================================================================
+                           3. FRONTEND (Interface)
+===============================================================================
+
+📱 ESTRUTURA HTML (index-wix.html):
+
+Seções Principais:
+1. Header: Navegação e informações do usuário
+2. Dashboard: Resumo financeiro e gráficos
+3. Contas: Lista e gerenciamento de contas
+4. Configurações: E-mail e exportação/importação
+
+Funcionalidades:
+- Tabs responsivas: Dashboard, Contas, Configurações
+- Modais: Adicionar/editar contas, configurar e-mail
+- Gráficos: Pizza e barras para visualização
+- Filtros: Por categoria, tipo, status
+
+⚡ JavaScript (script-wix.js):
+
+Comunicação com Backend:
+async function carregarDados() {
+    const response = await fetch('/api/contas');
+    contas = await response.json();
+}
+
+Dashboard Dinâmico:
+- Cálculos automáticos: Total, vencendo, vencidas
+- Gráficos interativos: Distribuição por categoria
+- Atualização em tempo real: Sem recarregar página
+
+Gerenciamento de Contas:
+- CRUD completo: Criar, ler, atualizar, deletar
+- Validação: Datas, valores, campos obrigatórios
+- Feedback visual: Mensagens de sucesso/erro
+
+===============================================================================
+                           4. BANCO DE DADOS
+===============================================================================
+
+📊 ESTRUTURA DE DADOS:
+
+{
+  "id": 1,
+  "descricao": "Conta de Luz",
+  "valor": 200,
+  "dataVencimento": "2024-12-15",
+  "categoria": "Energia",
+  "tipo": "conta",
+  "recorrente": false,
+  "paga": false,
+  "dataCriacao": "2025-07-31T14:08:48.756Z"
+}
+
+📋 CAMPOS PRINCIPAIS:
+
+- id: Identificador único (auto-incremento)
+- descricao: Nome da conta
+- valor: Valor em reais (number)
+- dataVencimento: Data de vencimento (YYYY-MM-DD)
+- categoria: Tipo de conta (Energia, Água, Internet, etc.)
+- tipo: "conta" ou "receita"
+- recorrente: Se repete mensalmente (boolean)
+- paga: Status de pagamento (boolean)
+- dataCriacao: Timestamp de criação (ISO string)
+
+📈 CATEGORIAS PADRÃO:
+
+- Energia (Conta de Luz)
+- Água (Conta de Água)
+- Internet (Internet/Telefone)
+- Aluguel (Aluguel/Moradia)
+- Alimentação (Mercado/Restaurante)
+- Transporte (Combustível/Ônibus)
+- Saúde (Plano de Saúde/Medicamentos)
+- Educação (Escola/Cursos)
+- Lazer (Entretenimento)
+- Outros (Diversos)
+
+===============================================================================
+                           5. DEPLOY (Vercel)
+===============================================================================
+
+⚙️ CONFIGURAÇÃO (vercel.json):
+
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server-web.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server-web.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
+
+🌐 CARACTERÍSTICAS:
+
+- Serverless: Funções ativadas sob demanda
+- Auto-scaling: Ajusta automaticamente
+- CDN global: Rápido em qualquer lugar
+- Integração Git: Deploy automático
+- SSL automático: HTTPS sempre ativo
+- Logs detalhados: Monitoramento completo
+
+🔧 VARIÁVEIS DE AMBIENTE:
+
+- MONGODB_URI: Conexão com MongoDB Atlas
+- EMAIL_PASSWORD: Senha do e-mail Gmail
+- NODE_ENV: Ambiente (production/development)
+
+===============================================================================
+                       6. SISTEMA DE NOTIFICAÇÕES
+===============================================================================
+
+⏰ MONITORAMENTO:
+
+- Frequência: A cada 2 horas (UptimeRobot)
+- Trigger: /api/verificar-notificacoes
+- Verificação: Contas vencendo/vencidas
+- Método: POST
+
+📧 TIPOS DE E-MAIL:
+
+1. Contas Vencendo (Próximos 7 dias):
+   - Assunto: "Contas Vencendo - Sistema Família Jamar"
+   - Conteúdo: Lista de contas que vencem nos próximos 7 dias
+   - Exemplo: "Conta de Luz vence em 3 dias"
+
+2. Contas Vencidas (Atrasadas):
+   - Assunto: "Contas Vencidas - Sistema Família Jamar"
+   - Conteúdo: Lista de contas que já passaram do vencimento
+   - Exemplo: "Conta de Água está 5 dias atrasada"
+
+3. Relatório Completo (Opcional):
+   - Assunto: "Relatório Completo - Sistema Família Jamar"
+   - Conteúdo: Todas as contas com status e valores
+   - Frequência: Conforme configurado no sistema
+
+🔄 PROCESSO DE NOTIFICAÇÃO:
+
+UptimeRobot (a cada 2h)
+    ↓
+Acessa seu site no Vercel
+    ↓
+"Acorda" o servidor
+    ↓
+Executa verificação de contas
+    ↓
+Se encontrar contas vencendo/vencidas
+    ↓
+Envia e-mail para você
+
+===============================================================================
+                   7. SEGURANÇA E CONFIABILIDADE
+===============================================================================
+
+🔐 VARIÁVEIS DE AMBIENTE:
+
+- MONGODB_URI: Conexão com banco (sensível)
+- EMAIL_PASSWORD: Senha do e-mail (sensível)
+- NODE_ENV: Ambiente (production/development)
+
+🛡️ FALLBACKS:
+
+- MongoDB → JSON local: Se banco falhar
+- E-mail hardcoded: Se variável não estiver
+- UptimeRobot: Se Vercel "dormir"
+- Validação de dados: Prevenção de erros
+- Try/catch: Tratamento de exceções
+
+🔒 SEGURANÇA:
+
+- CORS configurado: Controle de acesso
+- Validação de entrada: Prevenção de injeção
+- Sanitização de dados: Limpeza de inputs
+- HTTPS obrigatório: Criptografia
+- Headers de segurança: Proteção adicional
+
+===============================================================================
+                       8. FUNCIONALIDADES PRINCIPAIS
+===============================================================================
+
+💰 GESTÃO FINANCEIRA:
+
+- Controle de contas: Adicionar, editar, deletar
+- Categorização: Organizar por tipo
+- Status de pagamento: Marcar como paga
+- Contas recorrentes: Repetição mensal
+- Validação de dados: Prevenção de erros
+- Busca e filtros: Encontrar contas rapidamente
+
+📈 DASHBOARD:
+
+- Resumo financeiro: Total, vencendo, vencidas
+- Gráficos: Distribuição por categoria
+- Filtros: Buscar e filtrar contas
+- Exportação: CSV para backup
+- Importação: CSV para restaurar dados
+- Atualização em tempo real: Sem recarregar
+
+🔔 NOTIFICAÇÕES:
+
+- Alertas automáticos: E-mail a cada 2h
+- Contas vencendo: Próximos 7 dias
+- Contas vencidas: Atrasadas
+- Relatórios: Completo mensal
+- Configuração de e-mail: Interface amigável
+- Teste de envio: Verificar funcionamento
+
+📱 INTERFACE:
+
+- Responsiva: Funciona em qualquer dispositivo
+- Intuitiva: Fácil de usar
+- Moderna: Design atual
+- Acessível: Para todos os usuários
+- Rápida: Carregamento otimizado
+
+===============================================================================
+                       9. VANTAGENS DO SISTEMA
+===============================================================================
+
+✅ TECNOLÓGICAS:
+
+- Responsivo: Funciona em qualquer dispositivo
+- Offline: Funciona sem internet (JSON local)
+- Persistente: Dados salvos na nuvem
+- Automático: Notificações sem intervenção
+- Escalável: Suporta crescimento
+- Moderno: Tecnologias atuais
+
+✅ FUNCIONAIS:
+
+- Simples: Interface intuitiva
+- Completo: Todas as funcionalidades necessárias
+- Confiável: Múltiplos fallbacks
+- Gratuito: Sem custos de hospedagem
+- Rápido: Performance otimizada
+- Seguro: Dados protegidos
+
+✅ ECONÔMICAS:
+
+- Zero custo: Hospedagem gratuita
+- Sem manutenção: Automático
+- Sem instalação: Acesso via navegador
+- Backup automático: Dados seguros
+- Sem dependências: Funciona independente
+
+===============================================================================
+                       10. ESTRUTURA DE ARQUIVOS
+===============================================================================
+
+📁 ARQUIVOS ESSENCIAIS:
+
+Backend:
+- server-web.js (Servidor principal)
+- package.json (Dependências)
+- package-lock.json (Versões exatas)
+- vercel.json (Configuração Vercel)
+- .gitignore (Controle Git)
+
+Frontend:
+- public/index-wix.html (Interface principal)
+- public/script-wix.js (Lógica frontend)
+- public/styles.css (Estilos)
+- public/login.html (Página login)
+- public/login.js (Lógica login)
+- public/confirmar.html (Confirmação)
+- public/confirmar.js (Lógica confirmação)
+- public/favicon.svg (Ícone)
+
+Banco de Dados:
+- database/contas.json (Dados das contas)
+
+Deploy:
+- atualizar-github-programa.bat (Deploy automático)
+
+📁 DIRETÓRIOS:
+
+- /public: Arquivos frontend
+- /database: Dados locais
+- /node_modules: Dependências (gerado)
+- /.git: Controle de versão
+
+===============================================================================
+                           11. CONFIGURAÇÕES
+===============================================================================
+
+🔧 CONFIGURAÇÕES NECESSÁRIAS:
+
+1. MongoDB Atlas:
+   - Criar conta gratuita
+   - Criar cluster
+   - Configurar acesso
+   - Obter URI de conexão
+
+2. Vercel:
+   - Conectar repositório GitHub
+   - Configurar variáveis de ambiente
+   - Deploy automático
+
+3. E-mail:
+   - Configurar Gmail
+   - Gerar senha de app
+   - Configurar no sistema
+
+4. UptimeRobot:
+   - Criar conta gratuita
+   - Configurar monitor
+   - Intervalo de 2 horas
+
+⚙️ VARIÁVEIS DE AMBIENTE:
+
+MONGODB_URI:
+mongodb+srv://jamarestudo:A91L9XOUYiCaHetq@familiajamar.wu9knb3.mongodb.net/familia-jamar?retryWrites=true&w=majority&appName=Familiajamar
+
+EMAIL_PASSWORD:
+mekz ihei gvuz fkgb
+
+NODE_ENV:
+production
+
+===============================================================================
+                           12. TROUBLESHOOTING
+===============================================================================
+
+❌ PROBLEMAS COMUNS:
+
+1. Dados não persistem:
+   - Verificar MONGODB_URI no Vercel
+   - Confirmar conexão com MongoDB Atlas
+   - Verificar logs do Vercel
+
+2. E-mails não chegam:
+   - Verificar EMAIL_PASSWORD no Vercel
+   - Testar configuração de e-mail
+   - Verificar logs do sistema
+
+3. Notificações não funcionam:
+   - Configurar UptimeRobot
+   - Verificar rota /api/verificar-notificacoes
+   - Testar manualmente
+
+4. Site não carrega:
+   - Verificar deploy no Vercel
+   - Verificar logs de erro
+   - Confirmar variáveis de ambiente
+
+🔧 SOLUÇÕES:
+
+1. Para dados não persistirem:
+   - Configurar MONGODB_URI no Vercel
+   - Verificar conexão com MongoDB Atlas
+   - Usar fallback JSON local
+
+2. Para e-mails não chegarem:
+   - Configurar EMAIL_PASSWORD no Vercel
+   - Testar envio manual
+   - Verificar configuração SMTP
+
+3. Para notificações não funcionarem:
+   - Configurar UptimeRobot
+   - Testar rota manualmente
+   - Verificar logs do sistema
+
+4. Para site não carregar:
+   - Verificar deploy no Vercel
+   - Verificar logs de erro
+   - Confirmar configurações
+
+===============================================================================
+                                CONCLUSÃO
+===============================================================================
+
+🎯 O Sistema Família Jamar é uma solução completa e robusta para 
+controle financeiro familiar, oferecendo:
+
+✅ Funcionalidades completas de gestão financeira
+✅ Interface moderna e responsiva
+✅ Sistema de notificações automático
+✅ Persistência de dados confiável
+✅ Deploy gratuito e escalável
+✅ Segurança e confiabilidade
+
+🚀 O sistema está pronto para uso em produção e pode ser facilmente 
+expandido com novas funcionalidades conforme necessário.
+
+📞 Para suporte ou dúvidas, consulte a documentação ou entre em 
+contato com o desenvolvedor.
+
+===============================================================================
+                                FIM DA DOCUMENTAÇÃO
+=============================================================================== 
