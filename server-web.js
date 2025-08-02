@@ -309,13 +309,14 @@ async function verificarContasVencendo() {
         return dataVencimento < hoje;
     });
     
-    // Verificar se já enviamos notificação hoje
-    const hojeStr = hoje.toDateString();
+    // Verificar se já enviamos notificação hoje (para teste: a cada 5 minutos)
+    const agora = new Date();
+    const agoraStr = agora.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
     const ultimaVencendo = ultimaNotificacao.vencendo || '';
     const ultimaVencidas = ultimaNotificacao.vencidas || '';
     
-    // Enviar alerta de contas vencendo (máximo 1x por dia)
-    if (contasVencendo.length > 0 && ultimaVencendo !== hojeStr) {
+    // Enviar alerta de contas vencendo (para teste: a cada 5 minutos)
+    if (contasVencendo.length > 0 && ultimaVencendo !== agoraStr) {
         const assunto = '⚠️ Contas Vencendo - Sistema Família Jamar';
         const conteudo = `
             <h2>⚠️ Contas Vencendo nos Próximos 3 Dias</h2>
@@ -333,12 +334,12 @@ async function verificarContasVencendo() {
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
-        ultimaNotificacao.vencendo = hojeStr;
+        ultimaNotificacao.vencendo = agoraStr;
         console.log('📧 Alerta de contas vencendo enviado');
     }
     
-    // Enviar alerta de contas vencidas (máximo 1x por dia)
-    if (contasVencidas.length > 0 && ultimaVencidas !== hojeStr) {
+    // Enviar alerta de contas vencidas (para teste: a cada 5 minutos)
+    if (contasVencidas.length > 0 && ultimaVencidas !== agoraStr) {
         const assunto = '🚨 Contas Vencidas - Sistema Família Jamar';
         const conteudo = `
             <h2>🚨 Contas Vencidas</h2>
@@ -356,8 +357,30 @@ async function verificarContasVencendo() {
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
-        ultimaNotificacao.vencidas = hojeStr;
+        ultimaNotificacao.vencidas = agoraStr;
         console.log('📧 Alerta de contas vencidas enviado');
+    }
+    
+    // Enviar notificação de teste a cada 5 minutos
+    const ultimaTeste = ultimaNotificacao.teste || '';
+    if (ultimaTeste !== agoraStr) {
+        const assunto = '🧪 Teste - Sistema Família Jamar (5min)';
+        const conteudo = `
+            <h2>🧪 Teste de Notificação - 5 Minutos</h2>
+            <p>Olá! Esta é uma notificação de teste do Sistema Família Jamar.</p>
+            <p>Esta notificação é enviada a cada 5 minutos para verificar se o sistema está funcionando.</p>
+            <br>
+            <p><strong>Data/Hora:</strong> ${agora.toLocaleString('pt-BR')}</p>
+            <p><strong>Total de contas:</strong> ${contas.length}</p>
+            <p><strong>Contas vencendo:</strong> ${contasVencendo.length}</p>
+            <p><strong>Contas vencidas:</strong> ${contasVencidas.length}</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        await enviarEmail(emailConfigurado, assunto, conteudo);
+        ultimaNotificacao.teste = agoraStr;
+        console.log('🧪 Notificação de teste enviada');
     }
 }
 
