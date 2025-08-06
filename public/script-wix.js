@@ -4,6 +4,11 @@
 // Variáveis globais
 let contas = [];
 let emailConfigurado = null;
+let eventSource = null;
+let lastUpdateTime = null;
+let isRealtimeActive = false;
+let tentativasReconexao = 0;
+const MAX_TENTATIVAS_RECONEXAO = 3;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
@@ -13,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         atualizarDashboard();
         renderizarContas();
         configurarAtalhosTeclado();
+        
+        // Iniciar sistema de atualizações em tempo real
+        iniciarRealtimeUpdates();
         
         // Verificar se é primeira vez
         if (!localStorage.getItem('familiaJamarPrimeiraVez')) {
@@ -1223,11 +1231,29 @@ function configurarAtalhosTeclado() {
             exportarContas();
         }
         
+        // Ctrl + R - Forçar atualização
+        if (e.ctrlKey && e.key === 'r') {
+            e.preventDefault();
+            forcarAtualizacao();
+        }
+        
+                        // Ctrl + P - Toggle realtime
+                if (e.ctrlKey && e.key === 'p') {
+                    e.preventDefault();
+                    toggleRealtime();
+                }
+        
         // F1 - Mostrar atalhos
         if (e.key === 'F1') {
             e.preventDefault();
             mostrarAtalhosTeclado();
         }
+        
+                        // F2 - Mostrar status do realtime
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    mostrarInfoRealtime();
+                }
         
         // Esc - Fechar modais
         if (e.key === 'Escape') {
@@ -1257,8 +1283,130 @@ function fecharTodosModais() {
     });
 }
 
-// Verificação automática de contas vencendo (simulada)
-setInterval(() => {
+// ===== SISTEMA DE ATUALIZAÇÕES EM TEMPO REAL =====
+
+// Sistema de atualizações em tempo real usando Server-Sent Events
+function iniciarRealtimeUpdates() {
+    console.log('🔄 Iniciando sistema de atualizações em tempo real...');
+    
+    // Se já está ativo, não iniciar novamente
+    if (isRealtimeActive) {
+        console.log('⚠️ Sistema já está ativo, ignorando chamada duplicada');
+        return;
+    }
+    
+    try {
+        // Fechar conexão anterior se existir
+        if (eventSource) {
+            eventSource.close();
+        }
+        
+        // Criar nova conexão SSE
+        eventSource = new EventSource('/api/events');
+        
+        eventSource.onopen = function(event) {
+            console.log('✅ Conexão SSE estabelecida');
+            isRealtimeActive = true;
+            tentativasReconexao = 0; // Resetar tentativas de reconexão
+            atualizarStatusRealtime();
+        };
+        
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('📡 Evento recebido:', data);
+                
+                if (data.type === 'data_update') {
+                    // Atualizar dados quando houver mudanças no servidor
+                    carregarDados().then(() => {
+                        atualizarDashboard();
+                        renderizarContas();
+                        lastUpdateTime = Date.now();
+                        mostrarMensagem('Dados atualizados automaticamente', 'info');
+                    });
+                } else if (data.type === 'notification') {
+                    // Mostrar notificação do servidor
+                    mostrarMensagem(data.message, data.level || 'info');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar evento SSE:', error);
+            }
+        };
+        
+        eventSource.onerror = function(event) {
+            console.error('❌ Erro na conexão SSE:', event);
+            isRealtimeActive = false;
+            atualizarStatusRealtime();
+            
+            // Tentar reconectar apenas se não excedeu o limite de tentativas
+            if (tentativasReconexao < MAX_TENTATIVAS_RECONEXAO) {
+                tentativasReconexao++;
+                console.log(`🔄 Tentativa ${tentativasReconexao}/${MAX_TENTATIVAS_RECONEXAO} de reconexão SSE...`);
+                
+                setTimeout(() => {
+                    if (isRealtimeActive === false) {
+                        iniciarRealtimeUpdates();
+                    }
+                }, 5000);
+            } else {
+                console.log('❌ Máximo de tentativas de reconexão atingido. Desativando sistema automático.');
+                tentativasReconexao = 0;
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ Erro ao iniciar SSE:', error);
+        isRealtimeActive = false;
+        atualizarStatusRealtime();
+    }
+}
+
+function pararRealtimeUpdates() {
+    console.log('⏹️ Parando sistema de atualizações em tempo real...');
+    
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+    
+    isRealtimeActive = false;
+    tentativasReconexao = 0; // Resetar tentativas de reconexão
+    atualizarStatusRealtime();
+}
+
+// Função para forçar atualização manual
+async function forcarAtualizacao() {
+    console.log('🔄 Forçando atualização manual...');
+    
+    try {
+        await carregarDados();
+        atualizarDashboard();
+        renderizarContas();
+        lastUpdateTime = Date.now();
+        
+        mostrarMensagem('Dados atualizados com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Erro na atualização manual:', error);
+        mostrarMensagem('Erro ao atualizar dados', 'error');
+    }
+}
+
+// Função para verificar status do sistema em tempo real
+function verificarStatusRealtime() {
+    const status = {
+        ativo: isRealtimeActive,
+        ultimaAtualizacao: lastUpdateTime ? new Date(lastUpdateTime).toLocaleString('pt-BR') : 'Nunca',
+        conexao: eventSource ? eventSource.readyState : 'CLOSED'
+    };
+    
+    console.log('📊 Status do Sistema em Tempo Real:', status);
+    return status;
+}
+
+// Verificação automática de contas vencendo
+function verificarContasVencendo() {
     const hoje = new Date();
     const contasVencendo = contas.filter(conta => {
         if (conta.paga) return false;
@@ -1269,9 +1417,74 @@ setInterval(() => {
         return diasAteVencimento <= 3 && diasAteVencimento >= 0;
     });
     
-    if (contasVencendo.length > 0 && emailConfigurado) {
-        console.log('🔔 Simulando verificação automática de contas vencendo...');
+    if (contasVencendo.length > 0) {
+        console.log('🔔 Verificação automática de contas vencendo...');
         console.log(`📧 ${contasVencendo.length} conta(s) vencendo em breve`);
-        console.log('📧 Nota: Em uma versão com servidor, notificações seriam enviadas automaticamente.');
+        
+        // Mostrar notificação visual
+        mostrarMensagem(`${contasVencendo.length} conta(s) vencendo em breve!`, 'info');
     }
-}, 60000); // Verificar a cada minuto 
+}
+
+// Funções de controle do sistema em tempo real
+function toggleRealtime() {
+    const btnToggle = document.getElementById('btnTogglePolling');
+    const statusElement = document.getElementById('pollingStatus');
+    
+    if (isRealtimeActive) {
+        // Parar sistema em tempo real
+        pararRealtimeUpdates();
+        btnToggle.innerHTML = '<i class="fas fa-play"></i> Auto';
+        btnToggle.title = 'Ativar atualização automática';
+        statusElement.innerHTML = '<i class="fas fa-circle"></i> Inativo';
+        statusElement.className = 'polling-status inactive';
+        mostrarMensagem('Atualização automática desativada', 'info');
+    } else {
+        // Iniciar sistema em tempo real
+        iniciarRealtimeUpdates();
+        btnToggle.innerHTML = '<i class="fas fa-pause"></i> Auto';
+        btnToggle.title = 'Desativar atualização automática';
+        statusElement.innerHTML = '<i class="fas fa-circle"></i> Ativo';
+        statusElement.className = 'polling-status';
+        mostrarMensagem('Atualização automática ativada', 'success');
+    }
+}
+
+// Função para atualizar status na interface
+function atualizarStatusRealtime() {
+    const statusElement = document.getElementById('pollingStatus');
+    const btnToggle = document.getElementById('btnTogglePolling');
+    
+    if (statusElement && btnToggle) {
+        if (isRealtimeActive) {
+            statusElement.innerHTML = '<i class="fas fa-circle"></i> Ativo';
+            statusElement.className = 'polling-status';
+            btnToggle.innerHTML = '<i class="fas fa-pause"></i> Auto';
+            btnToggle.title = 'Desativar atualização automática';
+        } else {
+            statusElement.innerHTML = '<i class="fas fa-circle"></i> Inativo';
+            statusElement.className = 'polling-status inactive';
+            btnToggle.innerHTML = '<i class="fas fa-play"></i> Auto';
+            btnToggle.title = 'Ativar atualização automática';
+        }
+    }
+}
+
+// Função para mostrar informações detalhadas
+function mostrarInfoRealtime() {
+    const status = verificarStatusRealtime();
+    const info = `
+        <h4>Status do Sistema de Atualização:</h4>
+        <ul>
+            <li><strong>Status:</strong> ${status.ativo ? 'Ativo' : 'Inativo'}</li>
+            <li><strong>Última atualização:</strong> ${status.ultimaAtualizacao}</li>
+            <li><strong>Conexão:</strong> ${status.conexao}</li>
+            <li><strong>Tipo:</strong> Server-Sent Events (SSE)</li>
+        </ul>
+    `;
+    
+    mostrarMensagem(info, 'info');
+}
+
+// Atualizar status inicial após carregamento
+setTimeout(atualizarStatusRealtime, 1000); 

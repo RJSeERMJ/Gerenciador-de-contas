@@ -159,6 +159,75 @@
             color: #718096;
             font-style: italic;
         }
+        
+        /* Estilos para controles de polling */
+        .polling-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 15px;
+        }
+        
+        .polling-controls .btn {
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+        
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-1px);
+        }
+        
+        .polling-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        .polling-status.inactive {
+            color: #dc3545;
+        }
+        
+        .polling-status i {
+            font-size: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -174,6 +243,20 @@
                             <i class="fas fa-sign-out-alt"></i> Sair
                         </button>
                     </div>
+                    
+                    <!-- Controles de Atualização em Tempo Real -->
+                    <div class="polling-controls">
+                        <button class="btn btn-info" onclick="forcarAtualizacao()" title="Forçar atualização">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn btn-warning" onclick="toggleRealtime()" id="btnTogglePolling" title="Ativar/Desativar atualização automática">
+                            <i class="fas fa-pause"></i> Auto
+                        </button>
+                        <span class="polling-status" id="pollingStatus">
+                            <i class="fas fa-circle"></i> Ativo
+                        </span>
+                    </div>
+                    
                     <button class="btn btn-secondary" onclick="configurarEmail()">
                         <i class="fas fa-envelope"></i> Configurar E-mail
                     </button>

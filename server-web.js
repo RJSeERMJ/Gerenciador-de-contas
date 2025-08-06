@@ -420,6 +420,13 @@ app.post('/api/contas', async (req, res) => {
         contas.push(novaConta);
         await salvarDados();
         
+        // Notificar clientes SSE sobre a nova conta
+        notificarClientesSSE({
+            type: 'data_update',
+            message: 'Nova conta adicionada',
+            timestamp: new Date().toISOString()
+        });
+        
         res.json(novaConta);
     } catch (error) {
         console.log('❌ Erro ao adicionar conta:', error.message);
@@ -435,6 +442,14 @@ app.put('/api/contas/:id', async (req, res) => {
         if (index !== -1) {
             contas[index] = { ...contas[index], ...req.body };
             await salvarDados();
+            
+            // Notificar clientes SSE sobre a atualização
+            notificarClientesSSE({
+                type: 'data_update',
+                message: 'Conta atualizada',
+                timestamp: new Date().toISOString()
+            });
+            
             res.json(contas[index]);
         } else {
             res.status(404).json({ error: 'Conta não encontrada' });
@@ -479,6 +494,13 @@ app.delete('/api/contas/:id', async (req, res) => {
             await Promise.race([savePromise, saveTimeout]);
             console.log('✅ Alterações salvas com sucesso');
             
+            // Notificar clientes SSE sobre a exclusão
+            notificarClientesSSE({
+                type: 'data_update',
+                message: 'Conta deletada',
+                timestamp: new Date().toISOString()
+            });
+            
             res.json({ 
                 success: true, 
                 message: 'Conta deletada com sucesso',
@@ -521,6 +543,13 @@ app.post('/api/contas/:id/pagar', async (req, res) => {
             conta.paga = true;
             conta.dataPagamento = new Date().toISOString();
             await salvarDados();
+            
+            // Notificar clientes SSE sobre o pagamento
+            notificarClientesSSE({
+                type: 'data_update',
+                message: 'Conta marcada como paga',
+                timestamp: new Date().toISOString()
+            });
             
             console.log('✅ Conta marcada como paga:', {
                 id: conta.id,
@@ -817,19 +846,8 @@ app.post('/api/verificar-notificacoes', async (req, res) => {
     }
 });
 // FUNÇÃO POOLING
-async function verificarPeriodicamente() {
-    try {
-        const response = await fetch('/api/verificar-notificacoes');
-        const data = await response.json();
-        console.log('🔁 Verificação periódica:', data);
-    } catch (error) {
-        console.error('❌ Erro na verificação:', error);
-    }
-}
-
-// Executa imediatamente e repete a cada 5 minutos (300.000 ms)
-verificarPeriodicamente();
-setInterval(verificarPeriodicamente, 300000);
+// Função verificarPeriodicamente removida - agora usando Vercel Cron Jobs
+// para verificação automática de notificações
 // ROTA: Verificação manual de notificações via GET (para UptimeRobot)
 app.get('/api/verificar-notificacoes', async (req, res) => {
     try {
@@ -958,6 +976,172 @@ async function enviarRelatorioCompleto(email) {
         console.log('❌ Erro ao enviar relatório completo:', error.message);
     }
 }
+
+// ===== ROTAS DE CRON JOBS (Vercel) =====
+
+// Server-Sent Events para atualizações em tempo real
+app.get('/api/events', (req, res) => {
+    console.log('📡 Cliente conectado via SSE');
+    
+    // Configurar headers para SSE
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+    
+    // Enviar heartbeat inicial
+    res.write(`data: ${JSON.stringify({
+        type: 'connection',
+        message: 'Conexão SSE estabelecida',
+        timestamp: new Date().toISOString()
+    })}\n\n`);
+    
+    // Armazenar referência da conexão
+    const clientId = Date.now();
+    console.log(`📡 Cliente SSE conectado: ${clientId}`);
+    
+    // Função para enviar eventos
+    const enviarEvento = (data) => {
+        if (res.writableEnded) return;
+        
+        try {
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        } catch (error) {
+            console.error('❌ Erro ao enviar evento SSE:', error);
+        }
+    };
+    
+    // Adicionar à lista de clientes conectados
+    if (!global.sseClients) global.sseClients = new Map();
+    global.sseClients.set(clientId, enviarEvento);
+    
+    // Limpar quando a conexão for fechada
+    req.on('close', () => {
+        console.log(`📡 Cliente SSE desconectado: ${clientId}`);
+        if (global.sseClients) {
+            global.sseClients.delete(clientId);
+        }
+    });
+    
+    // Enviar heartbeat a cada 30 segundos
+    const heartbeat = setInterval(() => {
+        if (res.writableEnded) {
+            clearInterval(heartbeat);
+            return;
+        }
+        
+        enviarEvento({
+            type: 'heartbeat',
+            timestamp: new Date().toISOString()
+        });
+    }, 30000);
+});
+
+// Função para notificar todos os clientes SSE
+function notificarClientesSSE(data) {
+    if (!global.sseClients) return;
+    
+    console.log(`📡 Notificando ${global.sseClients.size} cliente(s) SSE`);
+    
+    global.sseClients.forEach((enviarEvento, clientId) => {
+        try {
+            enviarEvento(data);
+        } catch (error) {
+            console.error(`❌ Erro ao notificar cliente ${clientId}:`, error);
+            global.sseClients.delete(clientId);
+        }
+    });
+}
+
+// Cron Job: Verificar contas a cada 2 horas
+app.get('/api/cron/verificar-contas', async (req, res) => {
+    try {
+        console.log('⏰ Cron Job: Verificando contas vencendo...');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        // Recarregar dados do banco
+        await carregarDados();
+        
+        // Executar verificação de notificações
+        if (emailConfigurado) {
+            await verificarContasVencendo();
+            console.log('✅ Verificação de contas concluída');
+        } else {
+            console.log('📧 E-mail não configurado - pulando notificações');
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Cron Job: Verificação de contas executada',
+            timestamp: new Date().toISOString(),
+            emailConfigurado: !!emailConfigurado,
+            totalContas: contas.length
+        });
+    } catch (error) {
+        console.log('❌ Erro no cron job de verificação:', error.message);
+        res.status(500).json({ 
+            error: 'Erro no cron job',
+            message: error.message 
+        });
+    }
+});
+
+// Cron Job: Relatório diário às 8h
+app.get('/api/cron/relatorio-diario', async (req, res) => {
+    try {
+        console.log('📊 Cron Job: Enviando relatório diário...');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        if (emailConfigurado) {
+            await enviarRelatorioCompleto(emailConfigurado);
+            console.log('✅ Relatório diário enviado');
+        } else {
+            console.log('📧 E-mail não configurado - pulando relatório');
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Cron Job: Relatório diário executado',
+            timestamp: new Date().toISOString(),
+            emailConfigurado: !!emailConfigurado
+        });
+    } catch (error) {
+        console.log('❌ Erro no cron job de relatório:', error.message);
+        res.status(500).json({ 
+            error: 'Erro no cron job',
+            message: error.message 
+        });
+    }
+});
+
+// Cron Job: Keep-alive a cada 15 minutos
+app.get('/api/cron/keep-alive', async (req, res) => {
+    try {
+        console.log('💓 Cron Job: Keep-alive executado');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        // Recarregar dados do banco para manter sincronização
+        await carregarDados();
+        
+        res.json({ 
+            success: true, 
+            message: 'Cron Job: Keep-alive executado',
+            timestamp: new Date().toISOString(),
+            totalContas: contas.length
+        });
+    } catch (error) {
+        console.log('❌ Erro no cron job keep-alive:', error.message);
+        res.status(500).json({ 
+            error: 'Erro no cron job',
+            message: error.message 
+        });
+    }
+});
+
+// ===== ROTAS EXISTENTES =====
 
 // Rota GET simples para UptimeRobot (dispara notificações)
 app.get('/api/ping', async (req, res) => {
