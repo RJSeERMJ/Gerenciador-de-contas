@@ -816,7 +816,20 @@ app.post('/api/verificar-notificacoes', async (req, res) => {
         });
     }
 });
+// FUNÇÃO POOLING
+async function verificarPeriodicamente() {
+    try {
+        const response = await fetch('/api/verificar-notificacoes');
+        const data = await response.json();
+        console.log('🔁 Verificação periódica:', data);
+    } catch (error) {
+        console.error('❌ Erro na verificação:', error);
+    }
+}
 
+// Executa imediatamente e repete a cada 5 minutos (300.000 ms)
+verificarPeriodicamente();
+setInterval(verificarPeriodicamente, 300000);
 // ROTA: Verificação manual de notificações via GET (para UptimeRobot)
 app.get('/api/verificar-notificacoes', async (req, res) => {
     try {
