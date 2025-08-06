@@ -116,15 +116,15 @@ function carregarDadosLocais() {
             const dadosConfig = fs.readFileSync(ARQUIVO_CONFIG, 'utf8');
             const config = JSON.parse(dadosConfig);
             nextId = config.nextId || 1;
-            emailConfigurado = config.emailConfigurado || null;
+            emailConfigurado = config.emailConfigurado || 'jamarestudante@gmail.com'; // E-mail padrão
             console.log('✅ Configuração carregada do JSON local');
             if (emailConfigurado) {
                 console.log('📧 E-mail configurado:', emailConfigurado);
             }
         } else {
             nextId = 1;
-            emailConfigurado = null;
-            console.log('📝 Arquivo de configuração não encontrado, inicializando com ID 1');
+            emailConfigurado = 'jamarestudante@gmail.com'; // E-mail padrão fixo
+            console.log('📝 Arquivo de configuração não encontrado, inicializando com e-mail padrão');
         }
         
         console.log('🆔 Próximo ID:', nextId);
@@ -364,7 +364,10 @@ let emailConfigurado = null;
 let ultimaNotificacao = {};
 
 async function verificarContasVencendo() {
-    if (!emailConfigurado) {
+    // Usar e-mail padrão se não estiver configurado
+    const emailDestino = emailConfigurado || 'jamarestudante@gmail.com';
+    
+    if (!emailDestino) {
         console.log('📧 E-mail não configurado - pulando verificação');
         return;
     }
@@ -423,9 +426,9 @@ async function verificarContasVencendo() {
             </div>
         `;
         
-        await enviarEmail(emailConfigurado, assunto, conteudo);
+        await enviarEmail(emailDestino, assunto, conteudo);
         ultimaNotificacao.vencendo = agoraStr;
-        console.log('📧 Alerta de contas vencendo enviado');
+        console.log('📧 Alerta de contas vencendo enviado para:', emailDestino);
     }
     
     // Enviar alerta de contas vencidas (para teste: a cada 5 minutos)
@@ -460,9 +463,9 @@ async function verificarContasVencendo() {
             </div>
         `;
         
-        await enviarEmail(emailConfigurado, assunto, conteudo);
+        await enviarEmail(emailDestino, assunto, conteudo);
         ultimaNotificacao.vencidas = agoraStr;
-        console.log('📧 Alerta de contas vencidas enviado');
+        console.log('📧 Alerta de contas vencidas enviado para:', emailDestino);
     }
     
     // Enviar notificação de teste a cada 5 minutos
@@ -1396,22 +1399,22 @@ app.get('/api/cron/relatorios-5min', async (req, res) => {
 // Função para enviar relatório agendado
 async function enviarRelatorioAgendado() {
     try {
-        if (!emailConfigurado) {
-            console.log('📧 E-mail não configurado - pulando envio de relatório agendado');
-            return { success: false, message: 'E-mail não configurado' };
-        }
-
+        // Usar e-mail padrão se não estiver configurado
+        const emailDestino = emailConfigurado || 'jamarestudante@gmail.com';
+        
         const agora = new Date();
         console.log('📊 Enviando relatório agendado...');
         console.log('📅 Data/Hora:', agora.toLocaleString('pt-BR'));
+        console.log('📧 E-mail de destino:', emailDestino);
         
-        await enviarRelatorioCompleto(emailConfigurado);
+        await enviarRelatorioCompleto(emailDestino);
         
         console.log('✅ Relatório agendado enviado com sucesso');
         return { 
             success: true, 
             message: 'Relatório enviado com sucesso',
-            timestamp: agora.toISOString()
+            timestamp: agora.toISOString(),
+            email: emailDestino
         };
         
     } catch (error) {
@@ -1450,13 +1453,17 @@ app.post('/api/agendamento/enviar-manual', async (req, res) => {
 // Rota para verificar status do agendamento
 app.get('/api/agendamento/status', async (req, res) => {
     try {
+        const emailDestino = emailConfigurado || 'jamarestudante@gmail.com';
+        
         res.json({
             success: true,
-            emailConfigurado: !!emailConfigurado,
-            email: emailConfigurado,
+            emailConfigurado: !!emailDestino,
+            email: emailDestino,
+            emailPadrao: !emailConfigurado,
             proximoEnvio: 'A cada 5 minutos via Vercel Cron',
             intervalo: '5 minutos',
-            plataforma: 'Vercel Cron Jobs'
+            plataforma: 'Vercel Cron Jobs',
+            status: 'Ativo - Enviando relatórios automaticamente'
         });
         
     } catch (error) {
@@ -1576,13 +1583,10 @@ async function inicializarSistema() {
             console.log('📧 Nova rota: POST /api/verificar-notificacoes');
             
             // Sistema de agendamento via Vercel Cron Jobs
-            if (emailConfigurado) {
-                console.log('📧 E-mail configurado para relatórios:', emailConfigurado);
-                console.log('⏰ Relatórios serão enviados a cada 5 minutos via Vercel Cron Jobs');
-            } else {
-                console.log('📧 E-mail não configurado - configure em /api/configurar-email-agendamento');
-                console.log('💡 Relatórios serão enviados via Vercel Cron Jobs quando e-mail for configurado');
-            }
+            const emailDestino = emailConfigurado || 'jamarestudante@gmail.com';
+            console.log('📧 E-mail configurado para relatórios:', emailDestino);
+            console.log('⏰ Relatórios serão enviados a cada 5 minutos via Vercel Cron Jobs');
+            console.log('📊 Sistema pronto para envio automático de relatórios!');
         });
         
     } catch (error) {
