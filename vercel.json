@@ -17,10 +17,18 @@
   },
   "functions": {
     "server-web.js": {
-      "maxDuration": 60
+      "maxDuration": 30
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/relatorios-5min",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/keep-alive",
+      "schedule": "*/15 * * * *"
+    },
     {
       "path": "/api/cron/verificar-contas",
       "schedule": "0 */2 * * *"
@@ -28,10 +36,6 @@
     {
       "path": "/api/cron/relatorio-diario",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/keep-alive",
-      "schedule": "*/15 * * * *"
     }
   ]
 } 

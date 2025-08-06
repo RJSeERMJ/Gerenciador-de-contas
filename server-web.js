@@ -255,10 +255,56 @@ const emailConfigs = {
     }
 };
 
-// Função para enviar e-mail
+// Template HTML para e-mails
+const emailTemplates = {
+    header: `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; text-align: center; font-family: Arial, sans-serif;">
+                📱 Sistema Família Jamar
+            </h1>
+        </div>
+    `,
+    footer: `
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; color: #6c757d; font-family: Arial, sans-serif;">
+            <p style="margin: 0;">📧 Notificação automática do Sistema Família Jamar</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px;">Enviado em: ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+    `,
+    button: (text, color = '#007bff') => `
+        <a href="#" style="background-color: ${color}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; font-family: Arial, sans-serif;">
+            ${text}
+        </a>
+    `
+};
+
+// Função para criar template HTML completo
+function criarTemplateEmail(titulo, conteudo) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${titulo}</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${emailTemplates.header}
+            
+            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                ${conteudo}
+            </div>
+            
+            ${emailTemplates.footer}
+        </body>
+        </html>
+    `;
+}
+
+// Função para enviar e-mail com template
 async function enviarEmail(destinatario, assunto, conteudo) {
     try {
         console.log('📧 Tentando enviar e-mail para:', destinatario);
+        console.log('📝 Assunto:', assunto);
         
         if (!process.env.EMAIL_PASSWORD) {
             console.log('❌ Senha de e-mail não configurada');
@@ -266,20 +312,50 @@ async function enviarEmail(destinatario, assunto, conteudo) {
         }
         
         const transporter = nodemailer.createTransport(emailConfigs.gmail);
+        
+        // Verificar conexão
         await transporter.verify();
+        console.log('✅ Conexão SMTP verificada');
+        
+        // Criar template HTML
+        const htmlContent = criarTemplateEmail(assunto, conteudo);
         
         const result = await transporter.sendMail({
-            from: 'jamarestudo@gmail.com',
+            from: '"Sistema Família Jamar" <jamarestudo@gmail.com>',
             to: destinatario,
             subject: assunto,
-            html: conteudo
+            html: htmlContent,
+            text: conteudo.replace(/<[^>]*>/g, '') // Versão texto simples
         });
         
         console.log('✅ E-mail enviado com sucesso');
+        console.log('📨 Message ID:', result.messageId);
         return true;
     } catch (error) {
         console.log('❌ Erro ao enviar e-mail:', error.message);
+        console.log('🔍 Detalhes do erro:', error);
         return false;
+    }
+}
+
+// Função para enviar e-mail para múltiplos destinatários
+async function enviarEmailMultiplos(destinatarios, assunto, conteudo) {
+    try {
+        console.log('📧 Enviando e-mail para múltiplos destinatários:', destinatarios);
+        
+        const resultados = [];
+        for (const destinatario of destinatarios) {
+            const sucesso = await enviarEmail(destinatario, assunto, conteudo);
+            resultados.push({ destinatario, sucesso });
+        }
+        
+        const sucessos = resultados.filter(r => r.sucesso).length;
+        console.log(`✅ ${sucessos}/${destinatarios.length} e-mails enviados com sucesso`);
+        
+        return resultados;
+    } catch (error) {
+        console.log('❌ Erro ao enviar e-mails múltiplos:', error.message);
+        return [];
     }
 }
 
@@ -319,18 +395,32 @@ async function verificarContasVencendo() {
     if (contasVencendo.length > 0 && ultimaVencendo !== agoraStr) {
         const assunto = '⚠️ Contas Vencendo - Sistema Família Jamar';
         const conteudo = `
-            <h2>⚠️ Contas Vencendo nos Próximos 3 Dias</h2>
-            <p>Olá! Você tem contas vencendo em breve:</p>
-            <br>
-            <ul>
-                ${contasVencendo.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
-                `).join('')}
-            </ul>
-            <br>
-            <p>💰 Total: R$ ${contasVencendo.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</p>
-            <br>
-            <p>📱 Sistema Família Jamar</p>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #ff6b35; margin-bottom: 10px;">⚠️ Contas Vencendo nos Próximos 3 Dias</h2>
+                <p style="color: #666; font-size: 16px;">Olá! Você tem contas vencendo em breve:</p>
+            </div>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    ${contasVencendo.map(conta => `
+                        <li style="padding: 10px; margin: 5px 0; background: white; border-radius: 5px; border-left: 4px solid #ff6b35;">
+                            <strong style="color: #333;">${conta.descricao}</strong><br>
+                            <span style="color: #666;">R$ ${conta.valor}</span> - 
+                            <span style="color: #ff6b35; font-weight: bold;">Vence: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="background: #ff6b35; color: white; padding: 15px; border-radius: 8px; display: inline-block;">
+                    <strong>💰 Total: R$ ${contasVencendo.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</strong>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                ${emailTemplates.button('Ver Todas as Contas', '#ff6b35')}
+            </div>
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
@@ -342,18 +432,32 @@ async function verificarContasVencendo() {
     if (contasVencidas.length > 0 && ultimaVencidas !== agoraStr) {
         const assunto = '🚨 Contas Vencidas - Sistema Família Jamar';
         const conteudo = `
-            <h2>🚨 Contas Vencidas</h2>
-            <p>Olá! Você tem contas em atraso:</p>
-            <br>
-            <ul>
-                ${contasVencidas.map(conta => `
-                    <li><strong>${conta.descricao}</strong> - R$ ${conta.valor} - Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</li>
-                `).join('')}
-            </ul>
-            <br>
-            <p>💰 Total: R$ ${contasVencidas.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</p>
-            <br>
-            <p>📱 Sistema Família Jamar</p>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #dc3545; margin-bottom: 10px;">🚨 Contas Vencidas</h2>
+                <p style="color: #666; font-size: 16px;">Olá! Você tem contas em atraso:</p>
+            </div>
+            
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    ${contasVencidas.map(conta => `
+                        <li style="padding: 10px; margin: 5px 0; background: white; border-radius: 5px; border-left: 4px solid #dc3545;">
+                            <strong style="color: #333;">${conta.descricao}</strong><br>
+                            <span style="color: #666;">R$ ${conta.valor}</span> - 
+                            <span style="color: #dc3545; font-weight: bold;">Venceu: ${new Date(conta.dataVencimento).toLocaleDateString('pt-BR')}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="background: #dc3545; color: white; padding: 15px; border-radius: 8px; display: inline-block;">
+                    <strong>💰 Total: R$ ${contasVencidas.reduce((sum, conta) => sum + parseFloat(conta.valor), 0).toFixed(2)}</strong>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                ${emailTemplates.button('Ver Todas as Contas', '#dc3545')}
+            </div>
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
@@ -366,16 +470,32 @@ async function verificarContasVencendo() {
     if (ultimaTeste !== agoraStr) {
         const assunto = '🧪 Teste - Sistema Família Jamar (5min)';
         const conteudo = `
-            <h2>🧪 Teste de Notificação - 5 Minutos</h2>
-            <p>Olá! Esta é uma notificação de teste do Sistema Família Jamar.</p>
-            <p>Esta notificação é enviada a cada 5 minutos para verificar se o sistema está funcionando.</p>
-            <br>
-            <p><strong>Data/Hora:</strong> ${agora.toLocaleString('pt-BR')}</p>
-            <p><strong>Total de contas:</strong> ${contas.length}</p>
-            <p><strong>Contas vencendo:</strong> ${contasVencendo.length}</p>
-            <p><strong>Contas vencidas:</strong> ${contasVencidas.length}</p>
-            <br>
-            <p>📱 Sistema Família Jamar</p>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #6c757d; margin-bottom: 10px;">🧪 Teste de Notificação - 5 Minutos</h2>
+                <p style="color: #666; font-size: 16px;">Olá! Esta é uma notificação de teste do Sistema Família Jamar.</p>
+                <p style="color: #666; font-size: 14px;">Esta notificação é enviada a cada 5 minutos para verificar se o sistema está funcionando.</p>
+            </div>
+            
+            <div style="background: #e9ecef; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                    <div style="background: white; padding: 10px; border-radius: 5px;">
+                        <strong style="color: #333;">Total de contas</strong><br>
+                        <span style="color: #007bff; font-size: 18px;">${contas.length}</span>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 5px;">
+                        <strong style="color: #333;">Contas vencendo</strong><br>
+                        <span style="color: #ff6b35; font-size: 18px;">${contasVencendo.length}</span>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 5px;">
+                        <strong style="color: #333;">Contas vencidas</strong><br>
+                        <span style="color: #dc3545; font-size: 18px;">${contasVencidas.length}</span>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 5px;">
+                        <strong style="color: #333;">Data/Hora</strong><br>
+                        <span style="color: #6c757d; font-size: 12px;">${agora.toLocaleString('pt-BR')}</span>
+                    </div>
+                </div>
+            </div>
         `;
         
         await enviarEmail(emailConfigurado, assunto, conteudo);
@@ -384,8 +504,6 @@ async function verificarContasVencendo() {
     }
 }
 
-// Verificar contas periodicamente (só funciona localmente)
-// No Vercel, usar POST /api/verificar-notificacoes para verificação manual
 if (process.env.NODE_ENV !== 'production') {
     setInterval(verificarContasVencendo, 6 * 60 * 60 * 1000); // 6 horas
     console.log('🔄 Verificação automática ativada (modo local)');
@@ -731,14 +849,23 @@ app.post('/api/testar-email', async (req, res) => {
         
         const assunto = '🧪 Teste de E-mail - Sistema Família Jamar';
         const conteudo = `
-            <h2>🧪 Teste de E-mail</h2>
-            <p>Olá! Este é um e-mail de teste do Sistema Família Jamar.</p>
-            <p>Se você recebeu este e-mail, significa que as notificações estão funcionando corretamente!</p>
-            <br>
-            <p><strong>E-mail de teste:</strong> ${email}</p>
-            <p><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-            <br>
-            <p>📱 Sistema Família Jamar</p>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #007bff; margin-bottom: 10px;">🧪 Teste de E-mail</h2>
+                <p style="color: #666; font-size: 16px;">Olá! Este é um e-mail de teste do Sistema Família Jamar.</p>
+                <p style="color: #666; font-size: 14px;">Se você recebeu este e-mail, significa que as notificações estão funcionando corretamente!</p>
+            </div>
+            
+            <div style="background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <div style="text-align: center;">
+                    <p style="margin: 5px 0;"><strong>E-mail de teste:</strong> ${email}</p>
+                    <p style="margin: 5px 0;"><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                    <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745;">✅ Funcionando</span></p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                ${emailTemplates.button('Acessar Sistema', '#007bff')}
+            </div>
         `;
         
         const sucesso = await enviarEmail(email, assunto, conteudo);
@@ -756,6 +883,100 @@ app.post('/api/testar-email', async (req, res) => {
         }
     } catch (error) {
         console.log('❌ Erro ao testar e-mail:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Rota para enviar e-mail personalizado
+app.post('/api/enviar-email-personalizado', async (req, res) => {
+    try {
+        const { email, assunto, mensagem } = req.body;
+        
+        if (!email || !assunto || !mensagem) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'E-mail, assunto e mensagem são obrigatórios' 
+            });
+        }
+        
+        const conteudo = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #007bff; margin-bottom: 10px;">📧 Mensagem Personalizada</h2>
+                <p style="color: #666; font-size: 16px;">${mensagem}</p>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Enviado para:</strong> ${email}</p>
+                <p style="margin: 5px 0;"><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+        `;
+        
+        const sucesso = await enviarEmail(email, assunto, conteudo);
+        
+        if (sucesso) {
+            res.json({ 
+                success: true, 
+                message: 'E-mail personalizado enviado com sucesso!' 
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Erro ao enviar e-mail personalizado.' 
+            });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao enviar e-mail personalizado:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Rota para enviar e-mail para múltiplos destinatários
+app.post('/api/enviar-email-multiplos', async (req, res) => {
+    try {
+        const { emails, assunto, mensagem } = req.body;
+        
+        if (!emails || !Array.isArray(emails) || emails.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Lista de e-mails é obrigatória' 
+            });
+        }
+        
+        if (!assunto || !mensagem) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Assunto e mensagem são obrigatórios' 
+            });
+        }
+        
+        const conteudo = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #007bff; margin-bottom: 10px;">📧 Mensagem em Massa</h2>
+                <p style="color: #666; font-size: 16px;">${mensagem}</p>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Enviado para:</strong> ${emails.length} destinatário(s)</p>
+                <p style="margin: 5px 0;"><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+        `;
+        
+        const resultados = await enviarEmailMultiplos(emails, assunto, conteudo);
+        const sucessos = resultados.filter(r => r.sucesso).length;
+        
+        res.json({ 
+            success: true, 
+            message: `${sucessos}/${emails.length} e-mails enviados com sucesso!`,
+            resultados
+        });
+    } catch (error) {
+        console.log('❌ Erro ao enviar e-mails múltiplos:', error.message);
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
@@ -1141,6 +1362,153 @@ app.get('/api/cron/keep-alive', async (req, res) => {
     }
 });
 
+// Cron Job: Relatórios a cada 5 minutos (Vercel)
+app.get('/api/cron/relatorios-5min', async (req, res) => {
+    try {
+        console.log('📊 Cron Job: Relatórios a cada 5 minutos executado');
+        console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+        
+        // Recarregar dados do banco
+        await carregarDados();
+        
+        // Enviar relatório se e-mail estiver configurado
+        const resultado = await enviarRelatorioAgendado();
+        
+        res.json({ 
+            success: true, 
+            message: 'Cron Job: Relatórios executado',
+            timestamp: new Date().toISOString(),
+            totalContas: contas.length,
+            relatorioEnviado: resultado.success,
+            relatorioMessage: resultado.message
+        });
+    } catch (error) {
+        console.log('❌ Erro no cron job de relatórios:', error.message);
+        res.status(500).json({ 
+            error: 'Erro no cron job',
+            message: error.message 
+        });
+    }
+});
+
+// ===== SISTEMA DE AGENDAMENTO DE RELATÓRIOS (Vercel Compatível) =====
+
+// Função para enviar relatório agendado
+async function enviarRelatorioAgendado() {
+    try {
+        if (!emailConfigurado) {
+            console.log('📧 E-mail não configurado - pulando envio de relatório agendado');
+            return { success: false, message: 'E-mail não configurado' };
+        }
+
+        const agora = new Date();
+        console.log('📊 Enviando relatório agendado...');
+        console.log('📅 Data/Hora:', agora.toLocaleString('pt-BR'));
+        
+        await enviarRelatorioCompleto(emailConfigurado);
+        
+        console.log('✅ Relatório agendado enviado com sucesso');
+        return { 
+            success: true, 
+            message: 'Relatório enviado com sucesso',
+            timestamp: agora.toISOString()
+        };
+        
+    } catch (error) {
+        console.log('❌ Erro ao enviar relatório agendado:', error.message);
+        return { 
+            success: false, 
+            message: error.message,
+            timestamp: new Date().toISOString()
+        };
+    }
+}
+
+// Rota para enviar relatório manualmente (para teste)
+app.post('/api/agendamento/enviar-manual', async (req, res) => {
+    try {
+        const resultado = await enviarRelatorioAgendado();
+        
+        res.json({
+            success: resultado.success,
+            message: resultado.message,
+            timestamp: resultado.timestamp,
+            emailConfigurado: !!emailConfigurado,
+            email: emailConfigurado
+        });
+        
+    } catch (error) {
+        console.log('❌ Erro ao enviar relatório manual:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao enviar relatório',
+            error: error.message
+        });
+    }
+});
+
+// Rota para verificar status do agendamento
+app.get('/api/agendamento/status', async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            emailConfigurado: !!emailConfigurado,
+            email: emailConfigurado,
+            proximoEnvio: 'A cada 5 minutos via Vercel Cron',
+            intervalo: '5 minutos',
+            plataforma: 'Vercel Cron Jobs'
+        });
+        
+    } catch (error) {
+        console.log('❌ Erro ao verificar status:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao verificar status',
+            error: error.message
+        });
+    }
+});
+
+// Rota para configurar e-mail (Vercel compatível)
+app.post('/api/configurar-email-agendamento', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({
+                success: false,
+                message: 'E-mail inválido'
+            });
+        }
+        
+        // Configurar e-mail
+        emailConfigurado = email;
+        
+        // Salvar configuração
+        await salvarDados();
+        
+        console.log('📧 E-mail configurado para relatórios:', email);
+        
+        res.json({
+            success: true,
+            message: 'E-mail configurado com sucesso. Relatórios serão enviados a cada 5 minutos via Vercel Cron.',
+            email: email,
+            agendamentoAtivo: true,
+            proximoEnvio: 'A cada 5 minutos via Vercel Cron',
+            intervalo: '5 minutos',
+            plataforma: 'Vercel Cron Jobs'
+        });
+        
+    } catch (error) {
+        console.log('❌ Erro ao configurar e-mail:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao configurar e-mail',
+            error: error.message
+        });
+    }
+});
+
 // ===== ROTAS EXISTENTES =====
 
 // Rota GET simples para UptimeRobot (dispara notificações)
@@ -1206,6 +1574,15 @@ async function inicializarSistema() {
             console.log('📊 Contas na memória:', contas.length);
             console.log('🆔 Próximo ID:', nextId);
             console.log('📧 Nova rota: POST /api/verificar-notificacoes');
+            
+            // Sistema de agendamento via Vercel Cron Jobs
+            if (emailConfigurado) {
+                console.log('📧 E-mail configurado para relatórios:', emailConfigurado);
+                console.log('⏰ Relatórios serão enviados a cada 5 minutos via Vercel Cron Jobs');
+            } else {
+                console.log('📧 E-mail não configurado - configure em /api/configurar-email-agendamento');
+                console.log('💡 Relatórios serão enviados via Vercel Cron Jobs quando e-mail for configurado');
+            }
         });
         
     } catch (error) {
