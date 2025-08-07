@@ -1516,6 +1516,51 @@ app.post('/api/configurar-email-agendamento', async (req, res) => {
     }
 });
 
+// Rota para controlar relatório a cada 1 minuto
+app.post('/api/relatorio-1minuto', async (req, res) => {
+    try {
+        const { ativar, email } = req.body;
+        
+        if (ativar === undefined) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Parâmetro "ativar" é obrigatório (true/false)' 
+            });
+        }
+        
+        const emailDestino = email || emailConfigurado || 'jamarestudante@gmail.com';
+        
+        if (ativar) {
+            // Executar relatório completo imediatamente
+            await carregarDados();
+            await enviarRelatorioCompleto(emailDestino);
+            
+            res.json({ 
+                success: true, 
+                message: 'Relatório completo executado com sucesso! Será executado a cada 1 minuto automaticamente.',
+                email: emailDestino,
+                intervalo: '1 minuto',
+                proximaExecucao: 'Automática a cada 1 minuto',
+                totalContas: contas.length
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                message: 'Relatório a cada 1 minuto desativado',
+                email: emailDestino,
+                intervalo: 'Desativado'
+            });
+        }
+        
+    } catch (error) {
+        console.log('❌ Erro ao controlar relatório 1 minuto:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
 // Rota para configurar e-mail com agendamento automático a cada 5 minutos
 app.post('/api/configurar-email', async (req, res) => {
     try {
@@ -1680,15 +1725,48 @@ async function inicializarSistema() {
                 }
             };
             
+            // Função para executar relatório completo a cada 1 minuto
+            const executarRelatorioCompletoIntervalo = async () => {
+                try {
+                    console.log('📊 Executando relatório completo a cada 1 minuto...');
+                    console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+                    
+                    // Recarregar dados do banco
+                    await carregarDados();
+                    
+                    // Verificar se há e-mail configurado
+                    const emailDestino = emailConfigurado || 'jamarestudante@gmail.com';
+                    
+                    if (emailDestino && contas.length > 0) {
+                        // Enviar relatório completo
+                        await enviarRelatorioCompleto(emailDestino);
+                        console.log('✅ Relatório completo enviado com sucesso a cada 1 minuto');
+                        console.log('📧 Email:', emailDestino);
+                        console.log('📊 Total de contas:', contas.length);
+                    } else {
+                        console.log('⚠️ E-mail não configurado ou sem contas - pulando relatório');
+                    }
+                    
+                } catch (error) {
+                    console.log('❌ Erro no relatório completo a cada 1 minuto:', error.message);
+                }
+            };
+            
             // Executar imediatamente na primeira vez
             executarRelatorioIntervalo();
+            executarRelatorioCompletoIntervalo();
             
             // Configurar para executar a cada 5 minutos (300.000 ms)
             const intervalo5Minutos = 5 * 60 * 1000; // 5 minutos em milissegundos
             setInterval(executarRelatorioIntervalo, intervalo5Minutos);
             
+            // Configurar para executar a cada 1 minuto (60.000 ms)
+            const intervalo1Minuto = 1 * 60 * 1000; // 1 minuto em milissegundos
+            setInterval(executarRelatorioCompletoIntervalo, intervalo1Minuto);
+            
             console.log('✅ Sistema de intervalo configurado para 5 minutos');
-            console.log('⏰ Próxima execução em 5 minutos...');
+            console.log('✅ Sistema de relatório completo configurado para 1 minuto');
+            console.log('⏰ Próxima execução em 1 minuto...');
         });
         
     } catch (error) {
