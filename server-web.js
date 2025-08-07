@@ -1516,6 +1516,71 @@ app.post('/api/configurar-email-agendamento', async (req, res) => {
     }
 });
 
+// Rota para configurar e-mail com agendamento automático a cada 5 minutos
+app.post('/api/configurar-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'E-mail é obrigatório' 
+            });
+        }
+        
+        // Configurar e-mail
+        emailConfigurado = email;
+        
+        // Salvar configuração
+        await salvarDados();
+        
+        // Enviar e-mail de confirmação
+        const assunto = '✅ E-mail Configurado - Sistema Família Jamar';
+        const conteudo = `
+            <h2>✅ E-mail configurado com sucesso!</h2>
+            <p>Olá! Seu e-mail foi configurado no Sistema Família Jamar.</p>
+            <p>A partir de agora você receberá relatórios automáticos a cada 5 minutos neste e-mail.</p>
+            <br>
+            <p><strong>E-mail configurado:</strong> ${email}</p>
+            <p><strong>Intervalo de relatórios:</strong> A cada 5 minutos</p>
+            <p><strong>Plataforma:</strong> Vercel Cron Jobs</p>
+            <br>
+            <p>📱 Sistema Família Jamar</p>
+        `;
+        
+        const sucesso = await enviarEmail(email, assunto, conteudo);
+        
+        if (sucesso) {
+            // Enviar relatório completo se houver contas
+            if (contas.length > 0) {
+                await enviarRelatorioCompleto(email);
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'E-mail configurado com sucesso! Relatórios serão enviados automaticamente a cada 5 minutos.',
+                email: email,
+                agendamentoAtivo: true,
+                proximoEnvio: 'A cada 5 minutos via Vercel Cron',
+                intervalo: '5 minutos',
+                plataforma: 'Vercel Cron Jobs',
+                totalContas: contas.length
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Erro ao enviar e-mail de confirmação.' 
+            });
+        }
+    } catch (error) {
+        console.log('❌ Erro ao configurar e-mail:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
 // ===== ROTAS EXISTENTES =====
 
 // Rota GET simples para UptimeRobot (dispara notificações)
@@ -1587,6 +1652,43 @@ async function inicializarSistema() {
             console.log('📧 E-mail configurado para relatórios:', emailDestino);
             console.log('⏰ Relatórios serão enviados a cada 5 minutos via Vercel Cron Jobs');
             console.log('📊 Sistema pronto para envio automático de relatórios!');
+            
+            // ===== SISTEMA DE INTERVALO LOCAL (setInterval) =====
+            console.log('⏰ Iniciando sistema de intervalo local...');
+            
+            // Função para executar relatório a cada 5 minutos
+            const executarRelatorioIntervalo = async () => {
+                try {
+                    console.log('📊 Executando relatório via setInterval...');
+                    console.log('📅 Data/Hora:', new Date().toLocaleString('pt-BR'));
+                    
+                    // Recarregar dados do banco
+                    await carregarDados();
+                    
+                    // Enviar relatório
+                    const resultado = await enviarRelatorioAgendado();
+                    
+                    if (resultado.success) {
+                        console.log('✅ Relatório enviado com sucesso via setInterval');
+                        console.log('📧 Email:', resultado.email);
+                    } else {
+                        console.log('❌ Erro ao enviar relatório via setInterval:', resultado.message);
+                    }
+                    
+                } catch (error) {
+                    console.log('❌ Erro no setInterval:', error.message);
+                }
+            };
+            
+            // Executar imediatamente na primeira vez
+            executarRelatorioIntervalo();
+            
+            // Configurar para executar a cada 5 minutos (300.000 ms)
+            const intervalo5Minutos = 5 * 60 * 1000; // 5 minutos em milissegundos
+            setInterval(executarRelatorioIntervalo, intervalo5Minutos);
+            
+            console.log('✅ Sistema de intervalo configurado para 5 minutos');
+            console.log('⏰ Próxima execução em 5 minutos...');
         });
         
     } catch (error) {
